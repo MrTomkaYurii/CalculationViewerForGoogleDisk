@@ -36,22 +36,27 @@ jobs:
       - name: Publish
         run: dotnet publish src/CalculationViewer/CalculationViewer.csproj -c Release -o release
 
-      # Сайт живе не в корені домену, а в підпапці з іменем репозиторію:
-      #   https://<логін>.github.io/<репозиторій>/
-      # Тому <base href> має бути /<репозиторій>/, інакше не завантажаться скрипти й стилі.
-      # 404.html потрібен, щоб прямі посилання (наприклад /<репозиторій>/collections) відкривалися:
+      # Дізнаємось шлях сайту з налаштувань Pages:
+      #   без власного домену: /<репозиторій>   (https://<логін>.github.io/<репозиторій>/)
+      #   з власним доменом:   порожньо         (https://ваш-домен/)
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # <base href> має збігатися зі шляхом сайту, інакше не завантажаться скрипти й стилі.
+      # 404.html потрібен, щоб прямі посилання (наприклад /collections) відкривалися:
       # GitHub Pages віддає 404.html для невідомих адрес, і Blazor сам обирає потрібну сторінку.
       # .nojekyll вимикає обробку Jekyll, яка ігнорує папки з підкресленням (_framework).
       - name: Prepare for GitHub Pages
         run: |
-          BASE="/${{ github.event.repository.name }}/"
+          P="${{ steps.pages.outputs.base_path }}"
+          P="/${P#/}"
+          BASE="${P%/}/"
+          echo "base href: ${BASE}"
           sed -i "s|<base href=\"/\" />|<base href=\"${BASE}\" />|" release/wwwroot/index.html
           grep -q "<base href=\"${BASE}\" />" release/wwwroot/index.html
           cp release/wwwroot/index.html release/wwwroot/404.html
           touch release/wwwroot/.nojekyll
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
