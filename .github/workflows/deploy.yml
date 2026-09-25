@@ -1,0 +1,63 @@
+name: Deploy to GitHub Pages
+
+# Збирає Blazor WebAssembly і публікує його як статичний сайт.
+# Запускається сам після кожного push у main, а також вручну (вкладка Actions → Run workflow).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Одночасно йде лише один деплой, новіший скасовує старіший.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish
+        run: dotnet publish src/CalculationViewer/CalculationViewer.csproj -c Release -o release
+
+      # Сайт живе не в корені домену, а в підпапці з іменем репозиторію:
+      #   https://<логін>.github.io/<репозиторій>/
+      # Тому <base href> має бути /<репозиторій>/, інакше не завантажаться скрипти й стилі.
+      # 404.html потрібен, щоб прямі посилання (наприклад /<репозиторій>/collections) відкривалися:
+      # GitHub Pages віддає 404.html для невідомих адрес, і Blazor сам обирає потрібну сторінку.
+      # .nojekyll вимикає обробку Jekyll, яка ігнорує папки з підкресленням (_framework).
+      - name: Prepare for GitHub Pages
+        run: |
+          BASE="/${{ github.event.repository.name }}/"
+          sed -i "s|<base href=\"/\" />|<base href=\"${BASE}\" />|" release/wwwroot/index.html
+          grep -q "<base href=\"${BASE}\" />" release/wwwroot/index.html
+          cp release/wwwroot/index.html release/wwwroot/404.html
+          touch release/wwwroot/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: release/wwwroot
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

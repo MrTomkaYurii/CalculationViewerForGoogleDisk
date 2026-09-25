@@ -29,9 +29,10 @@ internal sealed class LocalFolderCatalog(HttpClient http) : IFolderCatalog
                     var roots = await http.GetFromJsonAsync<List<RootDto>>("api/roots", ct) ?? [];
                     _folders = roots.Select(r => new CatalogFolder { Id = r.Id, Title = r.Name, UpdatedUtc = r.ModifiedUtc }).ToList();
                 }
-                catch (HttpRequestException)
+                catch (HttpRequestException e)
                 {
-                    throw new DriveAccessException("Джерело даних недоступне. Запущено DevDriveServer?");
+                    Console.WriteLine($"[LocalFolderCatalog] Джерело даних недоступне (запущено DevDriveServer?): {e.Message}");
+                    throw new DriveAccessException("Джерело даних тимчасово недоступне. Спробуйте пізніше.");
                 }
             }
             return _folders;

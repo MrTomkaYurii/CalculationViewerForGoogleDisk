@@ -30,9 +30,11 @@ internal sealed class LocalDriveBrowser(HttpClient http) : IDriveBrowser
             }
             catch (HttpRequestException e)
             {
+                if (e.StatusCode != System.Net.HttpStatusCode.NotFound)
+                    Console.WriteLine($"[LocalDriveBrowser] Джерело даних недоступне (запущено DevDriveServer?): {e.Message}");
                 throw new DriveAccessException(e.StatusCode == System.Net.HttpStatusCode.NotFound
                     ? "Папку не знайдено."
-                    : "Джерело даних недоступне. Запущено DevDriveServer?");
+                    : "Джерело даних тимчасово недоступне. Спробуйте пізніше.");
             }
             _cache[folderId] = dto;
         }
