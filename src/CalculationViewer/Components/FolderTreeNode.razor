@@ -1,0 +1,78 @@
+@inject IDriveBrowser Drive
+
+<li role="treeitem" aria-expanded="@(_hasChildren ? _isOpen.ToString().ToLowerInvariant() : null)">
+    <div class="cv-trow @(Id == CurrentId ? "is-current" : "")">
+        <button type="button" class="cv-tchev @(_isOpen ? "is-open" : "") @(_hasChildren ? "" : "cv-tchev--none")"
+                @onclick="ToggleAsync" aria-label="@(_isOpen ? "Згорнути" : "Розгорнути")" tabindex="@(_hasChildren ? 0 : -1)">
+            <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+        </button>
+        <a class="cv-tlink" href="folder/@Id" title="@Name">
+            <MudIcon Icon="@(Id == CurrentId ? Icons.Material.Filled.FolderOpen : Icons.Material.Outlined.Folder)" />
+            <span>@Name</span>
+        </a>
+    </div>
+    @if (_isOpen)
+    {
+        @if (_loading)
+        {
+            <div class="cv-tspin"><MudProgressCircular Indeterminate="true" Size="Size.Small" /></div>
+        }
+        else if (_failed)
+        {
+            <div class="cv-tspin cv-muted" style="font-size:13px">Не вдалося завантажити</div>
+        }
+        else if (_children.Count > 0)
+        {
+            <ul role="group">
+                @foreach (var c in _children)
+                {
+                    <FolderTreeNode @key="c.Id" Id="@c.Id" Name="@c.Name" CurrentId="@CurrentId" Open="Open" />
+                }
+            </ul>
+        }
+    }
+</li>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter, EditorRequired] public string CurrentId { get; set; } = "";
+    [Parameter, EditorRequired] public HashSet<string> Open { get; set; } = [];
+
+    IReadOnlyList<DriveFolder> _children = [];
+    bool _isOpen, _loading, _failed, _loaded;
+    bool _hasChildren => !_loaded || _children.Count > 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var shouldOpen = Open.Contains(Id);
+        if (shouldOpen && !_isOpen)
+        {
+            _isOpen = true;
+            await LoadAsync();
+        }
+    }
+
+    async Task ToggleAsync()
+    {
+        _isOpen = !_isOpen;
+        if (_isOpen) { Open.Add(Id); await LoadAsync(); }
+        else Open.Remove(Id);
+    }
+
+    async Task LoadAsync()
+    {
+        if (_loaded) return;
+        _loading = true;
+        _failed = false;
+        StateHasChanged();
+        try
+        {
+            var listing = await Drive.GetListingAsync(Id);
+            _children = listing.Folders.OrderBy(f => f.Name, NaturalComparer.Instance).ToList();
+            _loaded = true;
+        }
+        catch (DriveAccessException) { _failed = true; }
+        finally { _loading = false; }
+    }
+}

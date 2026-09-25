@@ -1,0 +1,19 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.log
+publish/
+out/
+
+# Node (лише для разових команд, у репозиторії його немає)
+node_modules/
+
+# Локальні налаштування Claude Code (містять шляхи на машині розробника)
+.claude/
+
+# ОС
+Thumbs.db
+.DS_Store

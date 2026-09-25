@@ -1,0 +1,29 @@
+@inject IDriveBrowser Drive
+
+<article class="cv-file cv-kind--@File.Kind">
+    <a class="cv-file__link" href="@Href" title="@($"{File.Name} · {Ua.Size(File.SizeBytes)} · {Ua.Date(File.ModifiedUtc)}")">
+        <div class="cv-file__thumb" data-preview-src="@(File.IsImage ? Drive.GetImageUrl(File.Id) : null)"
+             data-preview-name="@(File.IsImage ? File.Name : null)" data-preview-meta="@(File.IsImage ? Ua.Size(File.SizeBytes) : null)">
+            @if (File.IsImage)
+            {
+                <img src="@Drive.GetThumbnailUrl(File.Id)" alt="" loading="lazy" decoding="async" />
+            }
+            else
+            {
+                <div class="cv-docthumb"><span class="cv-docthumb__ext">@File.Extension</span></div>
+            }
+        </div>
+        <div class="cv-file__body">
+            <FileName Name="@File.Name" />
+            <span class="cv-file__meta">@Ua.Size(File.SizeBytes)</span>
+        </div>
+    </a>
+    <StarButton IsOn="Bookmarked" OnClick="OnStar" Size="Size.Small" />
+</article>
+
+@code {
+    [Parameter, EditorRequired] public DriveFile File { get; set; } = default!;
+    [Parameter, EditorRequired] public string Href { get; set; } = "";
+    [Parameter] public bool Bookmarked { get; set; }
+    [Parameter] public EventCallback OnStar { get; set; }
+}

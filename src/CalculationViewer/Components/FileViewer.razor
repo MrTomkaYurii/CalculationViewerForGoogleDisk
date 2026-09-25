@@ -1,0 +1,274 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject IDriveBrowser Drive
+@inject ICollectionStore Collections
+@inject BookmarkActions Bookmarks
+@inject NavigationManager Nav
+
+@if (_file is not null)
+{
+    <div class="cv-viewer cv-kind--@_file.Kind" @ref="_root" role="dialog" aria-modal="true" aria-label="Перегляд файлу" tabindex="-1">
+        <header class="cv-viewer__bar">
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Class="cv-vbtn" OnClick="CloseAsync" aria-label="Закрити (Esc)" />
+            <div class="cv-viewer__title">
+                <span class="cv-viewer__name" title="@_file.Name">@_file.Name</span>
+                <span class="cv-viewer__sub">@(_index + 1) / @Files.Count · @_file.Extension · @Ua.Size(_file.SizeBytes)</span>
+            </div>
+            <div class="cv-viewer__tools">
+                @if (_file.IsImage)
+                {
+                    <div class="cv-vzoom">
+                        <MudIconButton Icon="@Icons.Material.Filled.Remove" Class="cv-vbtn" data-zoom="out" aria-label="Зменшити (−)" />
+                        <span class="js-zoom-label">100%</span>
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Class="cv-vbtn" data-zoom="in" aria-label="Збільшити (+)" />
+                        <MudIconButton Icon="@Icons.Material.Filled.FitScreen" Class="cv-vbtn" data-zoom="fit" aria-label="Вмістити у вікно (0)" />
+                    </div>
+                }
+                <MudIconButton Icon="@(_bookmarked ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                               Class="@($"cv-vbtn {(_bookmarked ? "is-on" : "")}")" OnClick="() => Bookmarks.AddFileAsync(_file)"
+                               aria-label="Додати в добірку" />
+                <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew" Class="cv-vbtn" Href="@Drive.GetOpenUrl(_file.Id)" Target="_blank" aria-label="Відкрити в новій вкладці" />
+                <MudIconButton Icon="@Icons.Material.Outlined.Download" Class="cv-vbtn cv-viewer__hide-xs" Href="@Drive.GetDownloadUrl(_file.Id)" aria-label="Завантажити" />
+            </div>
+        </header>
+
+        <div class="cv-viewer__stage">
+            @if (_file.IsImage)
+            {
+                <img class="cv-viewer__img" src="@Drive.GetImageUrl(_file.Id)" alt="@_file.Name" draggable="false" />
+            }
+            else if (_previewUrl is not null)
+            {
+                <iframe class="cv-viewer__frame" src="@_previewUrl" title="@_file.Name"></iframe>
+            }
+            else if (_file.Kind == FileKind.Docx && !_docxFailed)
+            {
+                <div class="cv-docx" @ref="_docx" aria-label="@_file.Name"></div>
+                @if (_docxLoading)
+                {
+                    <div class="cv-nopreview"><MudProgressCircular Indeterminate="true" /></div>
+                }
+            }
+            else if (_textLoading)
+            {
+                <div class="cv-nopreview"><MudProgressCircular Indeterminate="true" /></div>
+            }
+            else if (_text is not null)
+            {
+                <div class="cv-textview">
+                    <pre>@_text.Text</pre>
+                    @if (_text.Truncated)
+                    {
+                        <div class="cv-mono cv-muted" style="text-align:center;padding:0 0 32px">Показано початок файлу. Решту можна завантажити.</div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="cv-nopreview">
+                    <div class="cv-nopreview__icon"><MudIcon Icon="@Icons.Material.Outlined.InsertDriveFile" Size="Size.Large" /></div>
+                    <h2>Перегляд недоступний</h2>
+                    <p>@NoPreviewText</p>
+                    <div class="cv-mono">@_file.Name · @Ua.Size(_file.SizeBytes)</div>
+                    <div class="cv-state__actions">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download" Href="@Drive.GetDownloadUrl(_file.Id)">Завантажити</MudButton>
+                        <MudButton Variant="Variant.Outlined" Style="color:#e8eef3;border-color:rgba(255,255,255,.3)" StartIcon="@Icons.Material.Outlined.OpenInNew" Href="@Drive.GetOpenUrl(_file.Id)" Target="_blank">Відкрити окремо</MudButton>
+                    </div>
+                </div>
+            }
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Class="cv-viewer__nav cv-viewer__nav--prev" Disabled="@(_index <= 0)" OnClick="() => GoAsync(-1)" aria-label="Попередній (←)" />
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Class="cv-viewer__nav cv-viewer__nav--next" Disabled="@(_index >= Files.Count - 1)" OnClick="() => GoAsync(1)" aria-label="Наступний (→)" />
+        </div>
+
+        <footer class="cv-viewer__foot">
+            <div class="cv-strip" role="listbox" aria-label="Файли в папці">
+                @foreach (var f in Window)
+                {
+                    <button type="button" class="cv-strip__item cv-kind--@f.Kind @(f.Id == _file.Id ? "is-current" : "")" title="@f.Name" @onclick="() => GoToAsync(f)" @key="f.Id">
+                        @if (f.IsImage)
+                        {
+                            <img src="@Drive.GetThumbnailUrl(f.Id, 160)" alt="" loading="lazy" decoding="async" />
+                        }
+                        else
+                        {
+                            <span class="cv-strip__ext">@f.Extension</span>
+                        }
+                    </button>
+                }
+            </div>
+            <div class="cv-mbar">
+                <div class="cv-mbar__group">
+                    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Class="cv-vbtn" Disabled="@(_index <= 0)" OnClick="() => GoAsync(-1)" aria-label="Попередній" />
+                </div>
+                @if (_file.IsImage)
+                {
+                    <div class="cv-mbar__group">
+                        <MudIconButton Icon="@Icons.Material.Filled.Remove" Class="cv-vbtn" data-zoom="out" aria-label="Зменшити" />
+                        <span class="js-zoom-label">100%</span>
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Class="cv-vbtn" data-zoom="in" aria-label="Збільшити" />
+                        <MudIconButton Icon="@Icons.Material.Filled.FitScreen" Class="cv-vbtn" data-zoom="fit" aria-label="Вмістити" />
+                    </div>
+                }
+                else
+                {
+                    <div class="cv-mbar__group">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Download" Class="cv-vbtn" Href="@Drive.GetDownloadUrl(_file.Id)" aria-label="Завантажити" />
+                    </div>
+                }
+                <div class="cv-mbar__group">
+                    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Class="cv-vbtn" Disabled="@(_index >= Files.Count - 1)" OnClick="() => GoAsync(1)" aria-label="Наступний" />
+                </div>
+            </div>
+        </footer>
+    </div>
+}
+
+@code {
+    /// <summary>Файли папки в тому порядку, в якому їх бачить користувач.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<DriveFile> Files { get; set; } = [];
+    [Parameter, EditorRequired] public string CurrentId { get; set; } = "";
+    [Parameter, EditorRequired] public string FolderId { get; set; } = "";
+
+    ElementReference _root, _docx;
+    DriveFile? _file;
+    int _index;
+    string? _previewUrl;
+    TextPreview? _text;
+    bool _textLoading, _bookmarked, _needsReveal, _docxLoading, _docxFailed;
+    string? _docxFor;
+    IJSObjectReference? _module, _controller;
+    DotNetObjectReference<FileViewer>? _self;
+    CancellationTokenSource? _cts;
+
+    IEnumerable<DriveFile> Window
+    {
+        get
+        {
+            const int radius = 40;
+            var from = Math.Max(0, _index - radius);
+            var to = Math.Min(Files.Count, _index + radius + 1);
+            return Files.Skip(from).Take(to - from);
+        }
+    }
+
+    string NoPreviewText => _file?.Kind switch
+    {
+        FileKind.Docx or FileKind.Pdf or FileKind.Text => "Не вдалося показати цей файл у браузері. Його можна завантажити або відкрити окремо.",
+        _ => "Для цього типу файлів перегляду немає. Файл можна завантажити.",
+    };
+
+    protected override void OnInitialized() => Collections.Changed += OnStoreChanged;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var index = -1;
+        for (var i = 0; i < Files.Count; i++) if (Files[i].Id == CurrentId) { index = i; break; }
+        if (index < 0) { _file = null; return; }
+        var changed = _file?.Id != Files[index].Id;
+        _index = index;
+        _file = Files[index];
+        _bookmarked = Collections.IsBookmarked(BookmarkKind.File, _file.Id);
+        if (!changed) return;
+
+        _needsReveal = true;
+        _docxFor = null;
+        _docxFailed = false;
+        _docxLoading = false;
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        _previewUrl = Drive.GetPreviewUrl(_file);
+        _text = null;
+        if (_file.Kind == FileKind.Text && _previewUrl is null) await LoadTextAsync(_file, _cts.Token);
+    }
+
+    async Task LoadTextAsync(DriveFile file, CancellationToken ct)
+    {
+        _textLoading = true;
+        try
+        {
+            _text = await Drive.GetTextPreviewAsync(file, ct);
+            if (_text is null) _previewUrl = null;
+        }
+        catch (Exception e) when (e is OperationCanceledException or HttpRequestException) { _text = null; }
+        finally { _textLoading = false; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_file is null) return;
+        if (_controller is null)
+        {
+            _self = DotNetObjectReference.Create(this);
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/viewer.js");
+            _controller = await _module.InvokeAsync<IJSObjectReference>("attach", _root, _self);
+        }
+        if (_needsReveal)
+        {
+            _needsReveal = false;
+            await _controller.InvokeVoidAsync("revealCurrent");
+        }
+
+        // .docx: якщо iframe-перегляду немає (локальне джерело), малюємо документ у браузері.
+        if (_file is { Kind: FileKind.Docx } && _previewUrl is null && !_docxFailed && _docxFor != _file.Id && _module is not null)
+        {
+            var id = _file.Id;
+            _docxFor = id;
+            _docxLoading = true;
+            StateHasChanged();
+            var ok = await _module.InvokeAsync<bool>("renderDocx", _docx, Drive.GetContentUrl(id));
+            if (_file?.Id == id)
+            {
+                _docxLoading = false;
+                _docxFailed = !ok;
+                StateHasChanged();
+            }
+        }
+    }
+
+    void OnStoreChanged() => _ = InvokeAsync(() =>
+    {
+        if (_file is not null) _bookmarked = Collections.IsBookmarked(BookmarkKind.File, _file.Id);
+        StateHasChanged();
+    });
+
+    Task GoAsync(int delta) => NavigateByCore(delta);
+
+    Task GoToAsync(DriveFile f)
+    {
+        Nav.NavigateTo($"folder/{FolderId}?file={Uri.EscapeDataString(f.Id)}", replace: true);
+        return Task.CompletedTask;
+    }
+
+    Task NavigateByCore(int delta)
+    {
+        var i = _index + delta;
+        if (i >= 0 && i < Files.Count) return GoToAsync(Files[i]);
+        return Task.CompletedTask;
+    }
+
+    Task CloseAsync()
+    {
+        Nav.NavigateTo($"folder/{FolderId}");
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable] public Task NavigateBy(int delta) => InvokeAsync(() => NavigateByCore(delta));
+    [JSInvokable] public Task CloseFromJs() => InvokeAsync(CloseAsync);
+
+    public async ValueTask DisposeAsync()
+    {
+        Collections.Changed -= OnStoreChanged;
+        _cts?.Cancel();
+        try
+        {
+            if (_controller is not null)
+            {
+                await _controller.InvokeVoidAsync("dispose");
+                await _controller.DisposeAsync();
+            }
+            if (_module is not null) await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { }
+        _self?.Dispose();
+    }
+}

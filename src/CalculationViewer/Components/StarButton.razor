@@ -1,0 +1,13 @@
+<MudIconButton Icon="@(IsOn ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+               Class="@($"cv-star {(IsOn ? "is-on" : "")} {Class}")"
+               Size="@Size"
+               OnClick="OnClick"
+               aria-label="@(IsOn ? "Вже в добірці. Додати в іншу" : "Додати в добірку")"
+               title="@(IsOn ? "Вже в добірці" : "Додати в добірку")" />
+
+@code {
+    [Parameter] public bool IsOn { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public Size Size { get; set; } = Size.Medium;
+    [Parameter] public string? Class { get; set; }
+}

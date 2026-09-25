@@ -1,0 +1,92 @@
+@page "/collections"
+@implements IDisposable
+@inject ICollectionStore Store
+@inject IDriveBrowser Drive
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
+
+<PageTitle>Добірки · Розрахунки</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="cv-page">
+    <div class="cv-pagehead">
+        <h1>Добірки</h1>
+        <div class="cv-pagehead__actions">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">Нова добірка</MudButton>
+        </div>
+    </div>
+
+    <p class="cv-note">
+        <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+        <span>Добірки спільні: їх бачать усі відвідувачі. Зірочка на файлі або папці додає їх у добірку, назву закладки можна змінити.</span>
+    </p>
+
+    @if (_all is null)
+    {
+        <div class="cv-cards" aria-busy="true">
+            @for (var i = 0; i < 3; i++) { <div class="cv-skel" style="height:180px"></div> }
+        </div>
+    }
+    else if (_all.Count == 0)
+    {
+        <StateBox Icon="@Icons.Material.Outlined.StarBorder" Title="Добірок ще немає" Text="Створіть першу або натисніть зірочку на будь-якому файлі чи папці.">
+            <Actions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync">Створити добірку</MudButton>
+                <MudButton Variant="Variant.Outlined" Href="">До папок</MudButton>
+            </Actions>
+        </StateBox>
+    }
+    else
+    {
+        <div class="cv-cards">
+            @foreach (var c in _all)
+            {
+                <a class="cv-ccard" href="collections/@c.Id" @key="c.Id">
+                    <div class="cv-mosaic" aria-hidden="true">
+                        @for (var i = 0; i < 4; i++)
+                        {
+                            var item = i < c.Items.Count ? c.Items[i] : null;
+                            <div class="cv-mosaic__cell @(item is null ? "cv-mosaic__cell--empty" : "")">
+                                @if (item is { Kind: BookmarkKind.File, FileKind: FileKind.Image })
+                                {
+                                    <img src="@Drive.GetThumbnailUrl(item.DriveId, 160)" alt="" loading="lazy" decoding="async" />
+                                }
+                                else if (item is not null)
+                                {
+                                    <MudIcon Icon="@(item.Kind == BookmarkKind.Folder ? Icons.Material.Outlined.Folder : Icons.Material.Outlined.InsertDriveFile)" />
+                                }
+                            </div>
+                        }
+                    </div>
+                    <h2 class="cv-ccard__title">@c.Name</h2>
+                    <div class="cv-ccard__meta">@Ua.Items(c.Items.Count) · @Ua.Date(c.CreatedUtc)</div>
+                </a>
+            }
+        </div>
+    }
+</MudContainer>
+
+@code {
+    IReadOnlyList<BookmarkCollection>? _all;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Store.Changed += OnChanged;
+        _all = await Store.GetAllAsync();
+    }
+
+    async Task CreateAsync()
+    {
+        var name = await Dialogs.PromptAsync("Нова добірка", "Назва добірки", confirm: "Створити");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var c = await Store.CreateAsync(name);
+        Nav.NavigateTo($"collections/{c.Id}");
+    }
+
+    void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        _all = await Store.GetAllAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Store.Changed -= OnChanged;
+}

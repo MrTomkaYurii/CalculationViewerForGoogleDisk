@@ -1,0 +1,141 @@
+@page "/collections/{Id}"
+@implements IDisposable
+@inject ICollectionStore Store
+@inject IDriveBrowser Drive
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>@(_c?.Name ?? "Добірка") · Розрахунки</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="cv-page">
+    <nav class="cv-crumbs" aria-label="Шлях">
+        <a class="cv-crumb" href="collections"><span class="cv-crumb__icon"><MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" /></span><span>Усі добірки</span></a>
+    </nav>
+
+    @if (_loading)
+    {
+        <div class="cv-skel" style="height:40px;width:min(360px,70vw);margin-bottom:20px"></div>
+        <div class="cv-skel" style="height:220px"></div>
+    }
+    else if (_c is null)
+    {
+        <StateBox IsError="true" Icon="@Icons.Material.Outlined.SearchOff" Title="Добірку не знайдено" Text="Її могли видалити, або посилання неправильне.">
+            <Actions><MudButton Variant="Variant.Filled" Color="Color.Primary" Href="collections">До всіх добірок</MudButton></Actions>
+        </StateBox>
+    }
+    else
+    {
+        <div class="cv-pagehead">
+            <h1>@_c.Name</h1>
+            <div class="cv-pagehead__actions">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Edit" OnClick="RenameAsync">Перейменувати</MudButton>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Link" OnClick="CopyLinkAsync">Копіювати посилання</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete" OnClick="DeleteAsync">Видалити</MudButton>
+            </div>
+        </div>
+        <p class="cv-muted cv-mono" style="margin:-8px 0 20px">@Ua.Items(_c.Items.Count) · створено @Ua.Date(_c.CreatedUtc)</p>
+
+        @if (_c.Items.Count == 0)
+        {
+            <StateBox Icon="@Icons.Material.Outlined.StarBorder" Title="У цій добірці ще нічого немає" Text="Відкрийте папку й натисніть зірочку на файлі або підпапці, щоб додати їх сюди.">
+                <Actions><MudButton Variant="Variant.Filled" Color="Color.Primary" Href="">До папок</MudButton></Actions>
+            </StateBox>
+        }
+        else
+        {
+            <div class="cv-citems">
+                @foreach (var item in _c.Items)
+                {
+                    <div class="cv-citem" @key="item.Id">
+                        <a class="cv-citem__thumb" href="@item.Href" tabindex="-1" aria-hidden="true"
+                           data-preview-src="@(item is { Kind: BookmarkKind.File, FileKind: FileKind.Image } ? Drive.GetImageUrl(item.DriveId) : null)"
+                           data-preview-name="@(item is { Kind: BookmarkKind.File, FileKind: FileKind.Image } ? item.Title : null)">
+                            @if (item is { Kind: BookmarkKind.File, FileKind: FileKind.Image })
+                            {
+                                <img src="@Drive.GetThumbnailUrl(item.DriveId, 160)" alt="" loading="lazy" decoding="async" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@(item.Kind == BookmarkKind.Folder ? Icons.Material.Outlined.Folder : Icons.Material.Outlined.InsertDriveFile)" />
+                            }
+                        </a>
+                        <a class="cv-citem__main" href="@item.Href">
+                            <span class="cv-citem__title">@item.Title</span>
+                            @if (!string.IsNullOrEmpty(item.Path)) { <span class="cv-citem__path" style="display:block" title="@item.Path">@item.Path</span> }
+                            @if (item.Title != item.OriginalName && !string.IsNullOrEmpty(item.OriginalName)) { <span class="cv-citem__path" style="display:block">@item.OriginalName</span> }
+                        </a>
+                        <div class="cv-citem__actions">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small" OnClick="() => RenameItemAsync(item)" aria-label="Перейменувати закладку" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.Close" Size="Size.Small" OnClick="() => RemoveItemAsync(item)" aria-label="Прибрати з добірки" />
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    BookmarkCollection? _c;
+    bool _loading = true;
+
+    protected override void OnInitialized() => Store.Changed += OnChanged;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _c = await Store.GetAsync(Id);
+        _loading = false;
+    }
+
+    async Task RenameAsync()
+    {
+        var name = await Dialogs.PromptAsync("Перейменувати добірку", "Назва добірки", _c!.Name);
+        if (!string.IsNullOrWhiteSpace(name)) await Store.RenameAsync(Id, name);
+    }
+
+    async Task RenameItemAsync(CollectionItem item)
+    {
+        var title = await Dialogs.PromptAsync("Назва закладки", "Так закладка називається в добірці", item.Title);
+        if (!string.IsNullOrWhiteSpace(title)) await Store.RenameItemAsync(Id, item.Id, title);
+    }
+
+    async Task RemoveItemAsync(CollectionItem item)
+    {
+        await Store.RemoveItemAsync(Id, item.Id);
+        Snackbar.Add($"«{item.Title}» прибрано з добірки", Severity.Normal);
+    }
+
+    async Task DeleteAsync()
+    {
+        if (!await Dialogs.ConfirmAsync("Видалити добірку?", $"Добірка «{_c!.Name}» зникне для всіх відвідувачів. Самі файли й папки не зміняться.", "Видалити")) return;
+        await Store.DeleteAsync(Id);
+        Snackbar.Add("Добірку видалено", Severity.Normal);
+        Nav.NavigateTo("collections");
+    }
+
+    async Task CopyLinkAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", Nav.Uri);
+            Snackbar.Add("Посилання скопійовано", Severity.Success);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add("Не вдалося скопіювати. Скопіюйте адресу з рядка браузера.", Severity.Warning);
+        }
+    }
+
+    void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        _c = await Store.GetAsync(Id);
+        StateHasChanged();
+    });
+
+    public void Dispose() => Store.Changed -= OnChanged;
+}

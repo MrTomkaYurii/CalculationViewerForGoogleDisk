@@ -1,0 +1,73 @@
+@inherits LayoutComponentBase
+@layout MainLayout
+@implements IDisposable
+@inject IAdminSession Admin
+@inject NavigationManager Nav
+
+<PageTitle>Адміністрування · Розрахунки</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="cv-page">
+    @if (!Admin.IsSignedIn)
+    {
+        <section class="cv-login" aria-labelledby="login-title">
+            <div class="cv-login__icon"><MudIcon Icon="@Icons.Material.Outlined.AdminPanelSettings" Size="Size.Large" /></div>
+            <h1 id="login-title">Вхід для адміністратора</h1>
+            <p>Тут підключають папки Google Drive, пишуть їхні описи й прибирають зайве в добірках.</p>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true" Disabled="_signingIn"
+                       StartIcon="@Icons.Material.Filled.Login" OnClick="SignInAsync">
+                @(_signingIn ? "Входимо…" : "Увійти через Google")
+            </MudButton>
+            <MudButton Variant="Variant.Text" Href="" StartIcon="@Icons.Material.Filled.ArrowBack">Повернутися до папок</MudButton>
+        </section>
+    }
+    else
+    {
+        <div class="cv-adm-head">
+            <h1>Адміністрування</h1>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span class="cv-chip"><MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small" />@Admin.Email</span>
+                <MudButton Variant="Variant.Text" OnClick="Admin.SignOutAsync" StartIcon="@Icons.Material.Outlined.Logout">Вийти</MudButton>
+            </div>
+        </div>
+        <nav class="cv-tabs" aria-label="Розділи адміністрування">
+            <a href="admin/folders" class="@(_tab == "folders" ? "is-active" : "")">Папки</a>
+            <a href="admin/collections" class="@(_tab == "collections" ? "is-active" : "")">Добірки</a>
+        </nav>
+        @Body
+    }
+</MudContainer>
+
+@code {
+    bool _signingIn;
+    string _tab = "folders";
+
+    protected override void OnInitialized()
+    {
+        Admin.Changed += OnChanged;
+        Nav.LocationChanged += OnLocation;
+        UpdateTab();
+    }
+
+    async Task SignInAsync()
+    {
+        _signingIn = true;
+        await Admin.SignInAsync();
+        _signingIn = false;
+    }
+
+    void UpdateTab() => _tab = Nav.ToBaseRelativePath(Nav.Uri).StartsWith("admin/collections") ? "collections" : "folders";
+
+    void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    void OnLocation(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        UpdateTab();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Admin.Changed -= OnChanged;
+        Nav.LocationChanged -= OnLocation;
+    }
+}

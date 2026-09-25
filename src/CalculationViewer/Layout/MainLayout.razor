@@ -1,0 +1,141 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject ICollectionStore Collections
+
+<MudThemeProvider @ref="_provider" Theme="_theme" @bind-IsDarkMode="_isDark" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Fixed="true" Elevation="0" Class="cv-appbar">
+        <a href="" class="cv-brand" aria-label="На головну">
+            <span class="cv-brand__mark">Σ</span><span class="cv-brand__name">Розрахунки</span>
+        </a>
+        <MudSpacer />
+        <nav class="cv-topnav" aria-label="Основна навігація">
+            <a href="" class="cv-toplink @(_section == "folders" ? "is-active" : "")">Папки</a>
+            <a href="collections" class="cv-toplink @(_section == "collections" ? "is-active" : "")">
+                Добірки
+                @if (_collectionCount > 0) { <span class="cv-count">@_collectionCount</span> }
+            </a>
+        </nav>
+        <MudTooltip Text="@ThemeTitle">
+            <MudIconButton Icon="@ThemeIcon" OnClick="CycleThemeAsync" aria-label="@ThemeTitle" />
+        </MudTooltip>
+        <MudTooltip Text="Адміністратор">
+            <MudIconButton Icon="@Icons.Material.Outlined.AdminPanelSettings" Href="admin" Class="cv-appbar__admin" aria-label="Адміністратор" />
+        </MudTooltip>
+    </MudAppBar>
+    <MudMainContent Class="cv-main">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+<nav class="cv-tabbar" aria-label="Основна навігація">
+    <a href="" class="cv-tab @(_section == "folders" ? "is-active" : "")">
+        <MudIcon Icon="@Icons.Material.Outlined.Folder" />Папки
+    </a>
+    <a href="collections" class="cv-tab @(_section == "collections" ? "is-active" : "")">
+        <MudIcon Icon="@Icons.Material.Outlined.StarBorder" />Добірки
+    </a>
+    <a href="admin" class="cv-tab @(_section == "admin" ? "is-active" : "")">
+        <MudIcon Icon="@Icons.Material.Outlined.AdminPanelSettings" />Адмін
+    </a>
+</nav>
+
+@code {
+    enum ThemeMode { Auto, Light, Dark }
+
+    readonly MudTheme _theme = Theme.CvTheme.Create();
+    MudThemeProvider _provider = default!;
+    ThemeMode _mode = ThemeMode.Auto;
+    bool _isDark;
+    string _section = "folders";
+    int _collectionCount;
+
+    string ThemeTitle => _mode switch
+    {
+        ThemeMode.Auto => "Тема: як у системі",
+        ThemeMode.Light => "Тема: світла",
+        _ => "Тема: темна",
+    };
+
+    string ThemeIcon => _mode switch
+    {
+        ThemeMode.Auto => Icons.Material.Outlined.BrightnessAuto,
+        ThemeMode.Light => Icons.Material.Outlined.LightMode,
+        _ => Icons.Material.Outlined.DarkMode,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        Collections.Changed += OnCollectionsChanged;
+        UpdateSection();
+        _collectionCount = (await Collections.GetAllAsync()).Count;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            var saved = await JS.InvokeAsync<string?>("localStorage.getItem", "cv-theme");
+            _mode = Enum.TryParse<ThemeMode>(saved, out var m) ? m : ThemeMode.Auto;
+        }
+        catch (JSException) { }
+        await ApplyThemeAsync();
+        await _provider.WatchSystemDarkModeAsync(async dark =>
+        {
+            if (_mode != ThemeMode.Auto) return;
+            _isDark = dark;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    async Task ApplyThemeAsync()
+    {
+        _isDark = _mode switch
+        {
+            ThemeMode.Light => false,
+            ThemeMode.Dark => true,
+            _ => await _provider.GetSystemDarkModeAsync(),
+        };
+        StateHasChanged();
+    }
+
+    async Task CycleThemeAsync()
+    {
+        _mode = _mode switch { ThemeMode.Auto => ThemeMode.Light, ThemeMode.Light => ThemeMode.Dark, _ => ThemeMode.Auto };
+        try { await JS.InvokeVoidAsync("localStorage.setItem", "cv-theme", _mode.ToString()); }
+        catch (JSException) { }
+        await ApplyThemeAsync();
+    }
+
+    void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        UpdateSection();
+        StateHasChanged();
+    }
+
+    void OnCollectionsChanged() => _ = InvokeAsync(async () =>
+    {
+        _collectionCount = (await Collections.GetAllAsync()).Count;
+        StateHasChanged();
+    });
+
+    void UpdateSection()
+    {
+        var path = Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0];
+        _section = path.StartsWith("collections") ? "collections" : path.StartsWith("admin") ? "admin" : "folders";
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        Collections.Changed -= OnCollectionsChanged;
+    }
+}

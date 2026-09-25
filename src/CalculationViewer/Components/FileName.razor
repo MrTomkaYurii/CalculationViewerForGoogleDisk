@@ -1,0 +1,19 @@
+<span class="cv-fname" title="@Name">
+    <span class="cv-fname__head">@_head</span><span class="cv-fname__tail">@_tail</span>
+</span>
+
+@code {
+    /// <summary>Довга назва обрізається посередині: кінець (варіант і розширення) завжди видно.</summary>
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+
+    string _head = "";
+    string _tail = "";
+
+    protected override void OnParametersSet()
+    {
+        const int tail = 14;
+        if (Name.Length <= tail + 4) { _head = Name; _tail = ""; return; }
+        _head = Name[..^tail];
+        _tail = Name[^tail..];
+    }
+}

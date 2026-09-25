@@ -1,0 +1,42 @@
+<nav class="cv-crumbs" aria-label="Шлях до папки">
+    <a class="cv-crumb" href="">
+        <span class="cv-crumb__icon"><MudIcon Icon="@Icons.Material.Outlined.Home" Size="Size.Small" /></span><span>Папки</span>
+    </a>
+    @for (var i = 0; i < Path.Count; i++)
+    {
+        var seg = Path[i];
+        var last = i == Path.Count - 1;
+        @if (_collapse && i >= 1 && i < Path.Count - 2)
+        {
+            @if (i == 1)
+            {
+                <span class="cv-sep"><MudIcon Icon="@Icons.Material.Filled.ChevronRight" /></span>
+                <MudMenu Label="…" Dense="true" Variant="Variant.Text" aria-label="Проміжні папки">
+                    @foreach (var hidden in Path.Skip(1).Take(Path.Count - 3))
+                    {
+                        <MudMenuItem Href="@($"folder/{hidden.Id}")">@hidden.Name</MudMenuItem>
+                    }
+                </MudMenu>
+            }
+            continue;
+        }
+        <span class="cv-sep"><MudIcon Icon="@Icons.Material.Filled.ChevronRight" /></span>
+        @if (last)
+        {
+            <span class="cv-crumb is-current" aria-current="page" title="@seg.Name"><span>@seg.Name</span></span>
+        }
+        else
+        {
+            <a class="cv-crumb" href="folder/@seg.Id" title="@seg.Name"><span>@seg.Name</span></a>
+        }
+    }
+</nav>
+
+@code {
+    /// <summary>Глибокий шлях (5+ рівнів) згортається: перша папка, «…», дві останні.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<PathSegment> Path { get; set; } = [];
+
+    bool _collapse;
+
+    protected override void OnParametersSet() => _collapse = Path.Count > 4;
+}

@@ -1,0 +1,118 @@
+@page "/admin/collections"
+@layout AdminLayout
+@implements IDisposable
+@inject ICollectionStore Store
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<div class="cv-pagehead">
+    <div>
+        <h2 style="margin:0;font-size:20px;font-weight:600">Усі добірки</h2>
+        <p class="cv-muted" style="margin:4px 0 0">Добірки створюють відвідувачі. Тут можна переглянути їх і прибрати зайве.</p>
+    </div>
+    <div class="cv-pagehead__actions">
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Outlined.DeleteSweep" OnClick="PurgeEmptyAsync"
+                   Disabled="@(EmptyCount == 0)">Видалити порожні@(EmptyCount > 0 ? $" ({EmptyCount})" : "")</MudButton>
+    </div>
+</div>
+
+@if (_all is null)
+{
+    <div class="cv-skel" style="height:200px"></div>
+}
+else if (_all.Count == 0)
+{
+    <StateBox Icon="@Icons.Material.Outlined.StarBorder" Title="Добірок ще немає" Text="Вони з’являться, коли відвідувачі почнуть додавати файли й папки в закладки." />
+}
+else
+{
+    <div class="cv-toolbar" style="margin-top:0">
+        <MudTextField @bind-Value="_query" Class="cv-search" Placeholder="Знайти добірку" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" Immediate="true" Clearable="true" aria-label="Знайти добірку" />
+        <span class="cv-mono cv-muted">@Ua.Collections(Filtered.Count())</span>
+    </div>
+
+    @foreach (var c in Filtered)
+    {
+        var open = _open.Contains(c.Id);
+        <section class="cv-acoll" @key="c.Id">
+            <div class="cv-acoll__head">
+                <MudIconButton Icon="@(open ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" OnClick="() => Toggle(c.Id)"
+                               aria-label="@(open ? "Згорнути" : "Розгорнути")" aria-expanded="@open.ToString().ToLowerInvariant()" />
+                <div class="cv-acoll__title">
+                    @c.Name
+                    <div class="cv-mono cv-muted" style="font-size:12px;font-weight:400">@Ua.Items(c.Items.Count) · @Ua.Date(c.CreatedUtc)</div>
+                </div>
+                <MudTooltip Text="Відкрити як відвідувач"><MudIconButton Icon="@Icons.Material.Outlined.OpenInNew" Href="@($"collections/{c.Id}")" aria-label="Відкрити" /></MudTooltip>
+                <MudTooltip Text="Видалити добірку"><MudIconButton Icon="@Icons.Material.Outlined.Delete" OnClick="() => DeleteAsync(c)" aria-label="Видалити добірку" /></MudTooltip>
+            </div>
+            @if (open)
+            {
+                <div class="cv-acoll__body">
+                    @if (c.Items.Count == 0)
+                    {
+                        <div class="cv-muted" style="padding:14px 16px">Порожня добірка.</div>
+                    }
+                    @foreach (var item in c.Items)
+                    {
+                        <div class="cv-citem" style="grid-template-columns:minmax(0,1fr) auto" @key="item.Id">
+                            <a class="cv-citem__main" href="@item.Href">
+                                <span class="cv-citem__title">@item.Title</span>
+                                <span class="cv-citem__path" style="display:block" title="@item.Path">@item.Path</span>
+                            </a>
+                            <MudIconButton Icon="@Icons.Material.Outlined.Close" Size="Size.Small" OnClick="() => RemoveItemAsync(c, item)" aria-label="Прибрати з добірки" />
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+    }
+}
+
+@code {
+    IReadOnlyList<BookmarkCollection>? _all;
+    string _query = "";
+    readonly HashSet<string> _open = [];
+
+    int EmptyCount => _all?.Count(c => c.Items.Count == 0) ?? 0;
+
+    IEnumerable<BookmarkCollection> Filtered => (_all ?? [])
+        .Where(c => string.IsNullOrWhiteSpace(_query) || c.Name.Contains(_query.Trim(), StringComparison.CurrentCultureIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        Store.Changed += OnChanged;
+        _all = await Store.GetAllAsync();
+    }
+
+    void Toggle(string id) { if (!_open.Remove(id)) _open.Add(id); }
+
+    async Task DeleteAsync(BookmarkCollection c)
+    {
+        if (!await Dialogs.ConfirmAsync("Видалити добірку?", $"«{c.Name}» зникне для всіх відвідувачів.", "Видалити")) return;
+        await Store.DeleteAsync(c.Id);
+        Snackbar.Add("Добірку видалено", Severity.Normal);
+    }
+
+    async Task RemoveItemAsync(BookmarkCollection c, CollectionItem item)
+    {
+        await Store.RemoveItemAsync(c.Id, item.Id);
+        Snackbar.Add($"«{item.Title}» прибрано", Severity.Normal);
+    }
+
+    async Task PurgeEmptyAsync()
+    {
+        var empty = _all!.Where(c => c.Items.Count == 0).ToList();
+        if (!await Dialogs.ConfirmAsync("Видалити порожні добірки?", $"Буде видалено {Ua.Collections(empty.Count)} без жодного елемента.", "Видалити")) return;
+        foreach (var c in empty) await Store.DeleteAsync(c.Id);
+        Snackbar.Add("Порожні добірки видалено", Severity.Normal);
+    }
+
+    void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        _all = await Store.GetAllAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Store.Changed -= OnChanged;
+}

@@ -1,0 +1,13 @@
+@using Markdig
+
+<div class="cv-md">@((MarkupString)_html)</div>
+
+@code {
+    static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().DisableHtml().Build();
+
+    [Parameter] public string? Source { get; set; }
+
+    string _html = "";
+
+    protected override void OnParametersSet() => _html = Markdown.ToHtml(Source ?? "", Pipeline);
+}

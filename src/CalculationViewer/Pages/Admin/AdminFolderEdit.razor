@@ -1,0 +1,158 @@
+@page "/admin/folders/new"
+@page "/admin/folders/{Id}"
+@layout AdminLayout
+@inject IFolderCatalog Catalog
+@inject IDriveBrowser Drive
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<div class="cv-pagehead">
+    <h2 style="margin:0;font-size:20px;font-weight:600">@(IsNew ? "Нова папка" : "Редагування папки")</h2>
+</div>
+
+@if (_notFound)
+{
+    <StateBox IsError="true" Icon="@Icons.Material.Outlined.SearchOff" Title="Папку не знайдено" Text="Її вже прибрали зі списку.">
+        <Actions><MudButton Variant="Variant.Filled" Color="Color.Primary" Href="admin/folders">До списку папок</MudButton></Actions>
+    </StateBox>
+}
+else
+{
+    <div class="cv-form">
+        @if (IsNew)
+        {
+            <div class="cv-form__block">
+                <label class="cv-form__label" for="folder-link">Посилання на папку Google Drive</label>
+                <div class="cv-form__hint">
+                    Вставте посилання. Папка має бути відкрита для всіх, хто має посилання, інакше відвідувачі її не побачать.
+                    <br /><em>Поки джерело даних локальне, вкажіть шлях до папки, наприклад «Технічне завдання».</em>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
+                    <MudTextField id="folder-link" @bind-Value="_link" Placeholder="https://drive.google.com/drive/folders/…" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Style="flex:1 1 320px" Immediate="true" OnKeyUp="OnLinkKey" />
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="CheckAsync" Disabled="@(_checking || string.IsNullOrWhiteSpace(_link))" Style="min-height:40px">
+                        @(_checking ? "Перевіряємо…" : "Перевірити доступ")
+                    </MudButton>
+                </div>
+                @if (_check is not null)
+                {
+                    @if (_check.Status == FolderCheckStatus.Ok)
+                    {
+                        <div class="cv-check cv-check--ok" role="status"><MudIcon Icon="@Icons.Material.Filled.CheckCircle" /><div><strong>Папку знайдено:</strong> «@_check.Name». Доступ є.</div></div>
+                    }
+                    else
+                    {
+                        <div class="cv-check cv-check--bad" role="alert"><MudIcon Icon="@Icons.Material.Filled.Error" /><div>@CheckMessage(_check.Status)</div></div>
+                    }
+                }
+            </div>
+        }
+        else
+        {
+            <div class="cv-form__block">
+                <div class="cv-form__label">Папка</div>
+                <div class="cv-mono cv-muted" style="overflow-wrap:anywhere">@Id</div>
+            </div>
+        }
+
+        <div class="cv-form__block">
+            <label class="cv-form__label" for="folder-title">Назва в застосунку</label>
+            <div class="cv-form__hint">Так папку побачать відвідувачі. Назву в Google Drive це не змінює.</div>
+            <MudTextField id="folder-title" @bind-Value="_title" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" MaxLength="120" />
+        </div>
+
+        <div class="cv-form__block">
+            <div class="cv-form__label">Опис розрахунків</div>
+            <div class="cv-form__hint">Пишіть у Markdown: заголовки <code>##</code>, списки <code>-</code>, <strong>**жирний**</strong>, <code>`код`</code>. Опис показується над вмістом папки.</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <label class="cv-filebtn">
+                    <MudIcon Icon="@Icons.Material.Outlined.UploadFile" Size="Size.Small" />
+                    <span>Завантажити .md</span>
+                    <InputFile OnChange="OnFileAsync" accept=".md,.txt,text/markdown,text/plain" class="cv-sr-only" />
+                </label>
+                <span class="cv-mono cv-muted" style="font-size:12.5px">@_description.Length символів</span>
+                <span style="flex:1"></span>
+                <div class="cv-seg cv-editor__tabs" role="group" aria-label="Режим редактора">
+                    <button type="button" aria-pressed="@(_tab == "edit")" @onclick='() => _tab = "edit"'>Редагувати</button>
+                    <button type="button" aria-pressed="@(_tab == "preview")" @onclick='() => _tab = "preview"'>Перегляд</button>
+                </div>
+            </div>
+            <div class="cv-editor" data-tab="@_tab">
+                <div class="cv-editor__pane">
+                    <MudTextField @bind-Value="_description" Lines="14" Variant="Variant.Outlined" Immediate="true" Placeholder="## Про розрахунки&#10;Що лежить у цій папці…"
+                                  Style="font-family:var(--cv-mono)" aria-label="Текст опису в Markdown" />
+                </div>
+                <div class="cv-editor__preview" aria-label="Попередній перегляд опису">
+                    @if (string.IsNullOrWhiteSpace(_description)) { <span class="cv-muted">Тут з’явиться готовий опис.</span> }
+                    else { <MarkdownView Source="@_description" /> }
+                </div>
+            </div>
+        </div>
+
+        <div class="cv-formbar">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="@(!CanSave)">Зберегти</MudButton>
+            <MudButton Variant="Variant.Outlined" Href="admin/folders">Скасувати</MudButton>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    bool IsNew => Id is null;
+    bool _notFound, _checking;
+    string _link = "", _title = "", _description = "", _tab = "edit";
+    FolderCheckResult? _check;
+
+    bool CanSave => !string.IsNullOrWhiteSpace(_title) && (!IsNew || _check is { Status: FolderCheckStatus.Ok });
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsNew) return;
+        var f = await Catalog.FindAsync(Id!);
+        if (f is null) { _notFound = true; return; }
+        _title = f.Title;
+        _description = f.Description;
+    }
+
+    async Task CheckAsync()
+    {
+        _checking = true;
+        _check = null;
+        try
+        {
+            _check = await Drive.CheckFolderAsync(_link);
+            if (_check.Status == FolderCheckStatus.Ok && string.IsNullOrWhiteSpace(_title)) _title = _check.Name ?? "";
+        }
+        finally { _checking = false; }
+    }
+
+    async Task OnLinkKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !_checking && !string.IsNullOrWhiteSpace(_link)) await CheckAsync();
+    }
+
+    static string CheckMessage(FolderCheckStatus s) => s switch
+    {
+        FolderCheckStatus.NotPublic => "Доступ закритий. У Google Drive відкрийте «Налаштування доступу» й оберіть «Усі, хто має посилання».",
+        FolderCheckStatus.NotFound => "Такої папки немає. Перевірте посилання: воно має вести на папку, а не на файл.",
+        _ => "Це не схоже на посилання на папку. Скопіюйте адресу з рядка браузера, коли папка відкрита в Google Drive.",
+    };
+
+    async Task OnFileAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        if (file.Size > 1_000_000) { Snackbar.Add("Файл завеликий. Опис має вміщатися в 1 МБ.", Severity.Warning); return; }
+        using var reader = new StreamReader(file.OpenReadStream(1_000_000));
+        _description = await reader.ReadToEndAsync();
+        Snackbar.Add($"Опис завантажено з «{file.Name}»", Severity.Success);
+    }
+
+    async Task SaveAsync()
+    {
+        var id = IsNew ? _check!.DriveId! : Id!;
+        await Catalog.SaveAsync(new CatalogFolder { Id = id, Title = _title.Trim(), Description = _description });
+        Snackbar.Add("Збережено", Severity.Success);
+        Nav.NavigateTo("admin/folders");
+    }
+}

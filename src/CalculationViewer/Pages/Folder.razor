@@ -1,0 +1,307 @@
+@page "/folder/{FolderId}"
+@implements IDisposable
+@inject IDriveBrowser Drive
+@inject IFolderCatalog Catalog
+@inject ICollectionStore Collections
+@inject BookmarkActions Bookmarks
+@inject UiPrefs Prefs
+@inject NavigationManager Nav
+
+<PageTitle>@(Title ?? "Папка") · Розрахунки</PageTitle>
+
+@if (_path.Count > 0)
+{
+    <MudDrawer @bind-Open="_treeOpen" Anchor="Anchor.Start" Variant="DrawerVariant.Responsive" Breakpoint="Breakpoint.Md"
+               ClipMode="DrawerClipMode.Always" Elevation="0" Width="248px" Class="cv-tree-drawer">
+        <div class="cv-tree__head">
+            <a class="cv-tree__back" href=""><MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />Усі папки</a>
+            <div class="cv-tree__title">@(_root?.Title ?? _path[0].Name)</div>
+        </div>
+        <div class="cv-tree__body" aria-label="Дерево папок">
+            <FolderTree Path="_path" CurrentId="@FolderId" />
+        </div>
+    </MudDrawer>
+}
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="cv-page">
+    @if (_path.Count > 0) { <DeepCrumbs Path="_path" /> }
+
+    <div class="cv-head">
+        <div class="cv-head__main">
+            <MudIconButton Icon="@Icons.Material.Outlined.AccountTree" Class="cv-treebtn" OnClick="() => _treeOpen = !_treeOpen" aria-label="Дерево папок" />
+            @if (Title is not null) { <h1 class="cv-title">@Title</h1> }
+            else { <div class="cv-skel" style="height:34px;width:min(420px,70vw)"></div> }
+        </div>
+        @if (Title is not null && _listing is not null)
+        {
+            <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, FolderId)" OnClick="() => Bookmarks.AddFolderAsync(FolderId, Title)" />
+        }
+    </div>
+
+    @if (_loading)
+    {
+        <div class="cv-stamp" style="margin-top:14px"><div class="cv-stamp__cell"><div class="cv-stamp__label">Завантаження</div><div class="cv-stamp__value">…</div></div></div>
+        <div class="cv-dirs" aria-busy="true">
+            @for (var i = 0; i < 6; i++) { <div class="cv-skel" style="height:52px"></div> }
+        </div>
+        <div class="cv-files" style="margin-top:28px">
+            @for (var i = 0; i < 8; i++) { <div class="cv-skel" style="aspect-ratio:4/3.3"></div> }
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <StateBox IsError="true" Icon="@Icons.Material.Outlined.LockOpen" Title="Не вдалося відкрити папку" Text="@_error">
+            <Actions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => LoadAsync()">Спробувати ще раз</MudButton>
+                <MudButton Variant="Variant.Outlined" Href="">До списку папок</MudButton>
+            </Actions>
+        </StateBox>
+    }
+    else if (_listing is not null)
+    {
+        var imgs = _sortedFiles.Count(f => f.IsImage);
+        var docs = _sortedFiles.Count - imgs;
+        var hasMain = _listing.Folders.Count + _sortedFiles.Count > 0;
+
+        <div class="cv-stamp" role="group" aria-label="Вміст папки">
+            <div class="cv-stamp__cell"><div class="cv-stamp__label">Підпапок</div><div class="cv-stamp__value">@Ua.Num(_listing.Folders.Count)</div></div>
+            @if (imgs > 0) { <div class="cv-stamp__cell"><div class="cv-stamp__label">Зображень</div><div class="cv-stamp__value">@Ua.Num(imgs)</div></div> }
+            @if (docs > 0) { <div class="cv-stamp__cell"><div class="cv-stamp__label">Документів</div><div class="cv-stamp__value">@Ua.Num(docs)</div></div> }
+            @if (_technical.Count > 0) { <div class="cv-stamp__cell"><div class="cv-stamp__label">Службових</div><div class="cv-stamp__value">@Ua.Num(_technical.Count)</div></div> }
+        </div>
+
+        @if (_root is not null && _root.Id == FolderId && !string.IsNullOrWhiteSpace(_root.Description))
+        {
+            <section class="cv-desc @(_descOpen ? "is-open" : "")" aria-label="Опис папки">
+                <div class="cv-desc__body"><MarkdownView Source="@_root.Description" /></div>
+                <button type="button" class="cv-desc__toggle" @onclick="() => _descOpen = !_descOpen" aria-expanded="@_descOpen.ToString().ToLowerInvariant()">
+                    @(_descOpen ? "Згорнути опис" : "Показати опис повністю")
+                </button>
+            </section>
+        }
+
+        @if (!hasMain && _technical.Count == 0)
+        {
+            <StateBox Icon="@Icons.Material.Outlined.FolderOpen" Title="У цій папці порожньо" Text="Тут немає ні підпапок, ні файлів.">
+                <Actions>
+                    @if (_path.Count > 1)
+                    {
+                        <MudButton Variant="Variant.Outlined" Href="@($"folder/{_path[^2].Id}")" StartIcon="@Icons.Material.Filled.ArrowUpward">На рівень вище</MudButton>
+                    }
+                </Actions>
+            </StateBox>
+        }
+
+        @if (hasMain)
+        {
+            <div class="cv-controls">
+                <MudTextField @bind-Value="_query" Class="cv-search" Placeholder="Пошук у цій папці" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" Immediate="true" Clearable="true"
+                              aria-label="Пошук у цій папці" TextChanged="OnQueryChanged" />
+                @if (_sortedFiles.Count > 0)
+                {
+                    @if (imgs > 0 && docs > 0)
+                    {
+                        <div class="cv-seg cv-seg--filters" role="group" aria-label="Тип файлів">
+                            <button type="button" aria-pressed="@(_cat == "all")" @onclick='() => SetCat("all")'>Усі <span class="cv-seg__n">@_sortedFiles.Count</span></button>
+                            <button type="button" aria-pressed="@(_cat == "img")" @onclick='() => SetCat("img")'>Зображення <span class="cv-seg__n">@imgs</span></button>
+                            <button type="button" aria-pressed="@(_cat == "doc")" @onclick='() => SetCat("doc")'>Документи <span class="cv-seg__n">@docs</span></button>
+                        </div>
+                    }
+                    <span class="cv-controls__spacer"></span>
+                    <div class="cv-seg cv-seg--icons" role="group" aria-label="Вигляд">
+                        <button type="button" aria-pressed="@(Prefs.View == ViewMode.Grid)" @onclick="() => Prefs.View = ViewMode.Grid" aria-label="Плитка"><MudIcon Icon="@Icons.Material.Outlined.GridView" Size="Size.Small" /></button>
+                        <button type="button" aria-pressed="@(Prefs.View == ViewMode.List)" @onclick="() => Prefs.View = ViewMode.List" aria-label="Список"><MudIcon Icon="@Icons.Material.Outlined.ViewList" Size="Size.Small" /></button>
+                    </div>
+                }
+            </div>
+
+            var dirs = VisibleFolders;
+            var files = VisibleFiles;
+
+            @if (dirs.Count == 0 && files.Count == 0)
+            {
+                <StateBox Icon="@Icons.Material.Outlined.SearchOff" Title="Нічого не знайдено" Text="@($"У цій папці немає елементів за запитом «{_query}».")">
+                    <Actions><MudButton Variant="Variant.Outlined" OnClick="ResetFilters">Скинути пошук і фільтр</MudButton></Actions>
+                </StateBox>
+            }
+
+            @if (dirs.Count > 0)
+            {
+                <section class="cv-section" aria-label="Підпапки">
+                    <h2 class="cv-section__title">Підпапки <span class="cv-mono">@dirs.Count</span></h2>
+                    <div class="cv-dirs">
+                        @foreach (var d in dirs)
+                        {
+                            <div class="cv-dir" @key="d.Id">
+                                <a class="cv-dir__link" href="folder/@d.Id" title="@d.Name">
+                                    <span class="cv-dir__icon"><MudIcon Icon="@Icons.Material.Filled.Folder" /></span>
+                                    <span class="cv-dir__name">@d.Name</span>
+                                </a>
+                                <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, d.Id)" OnClick="() => Bookmarks.AddFolderAsync(d.Id, d.Name)" Size="Size.Small" />
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            @if (files.Count > 0)
+            {
+                <section class="cv-section" aria-label="Файли">
+                    <h2 class="cv-section__title">Файли <span class="cv-mono">@files.Count</span></h2>
+                    @if (Prefs.View == ViewMode.Grid)
+                    {
+                        <div class="cv-files">
+                            @foreach (var f in files.Take(_shown))
+                            {
+                                <FileTile @key="f.Id" File="f" Href="@FileHref(f)" Bookmarked="@Collections.IsBookmarked(BookmarkKind.File, f.Id)" OnStar="() => Bookmarks.AddFileAsync(f)" />
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="cv-flist">
+                            @foreach (var f in files.Take(_shown))
+                            {
+                                <FileRow @key="f.Id" File="f" Href="@FileHref(f)" Bookmarked="@Collections.IsBookmarked(BookmarkKind.File, f.Id)" OnStar="() => Bookmarks.AddFileAsync(f)" />
+                            }
+                        </div>
+                    }
+                    @if (files.Count > _shown)
+                    {
+                        <div class="cv-more">
+                            <MudButton Variant="Variant.Outlined" OnClick="() => _shown += PageSize">Показати ще @Math.Min(PageSize, files.Count - _shown) з @Ua.Num(files.Count - _shown)</MudButton>
+                        </div>
+                    }
+                </section>
+            }
+        }
+
+        @if (_technical.Count > 0)
+        {
+            <section class="cv-tech" aria-label="Службові файли">
+                <button type="button" class="cv-tech__head" @onclick="() => _techOpen = !_techOpen" aria-expanded="@_techOpen.ToString().ToLowerInvariant()">
+                    <MudIcon Icon="@Icons.Material.Outlined.Storage" Size="Size.Small" />
+                    <span class="cv-tech__title">Службові файли</span>
+                    <span class="cv-mono cv-muted">@Ua.Num(_technical.Count)</span>
+                    <span class="cv-tech__hint">дані для розрахунків, без перегляду</span>
+                    <MudIcon Icon="@(_techOpen ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" />
+                </button>
+                @if (_techOpen)
+                {
+                    <ul class="cv-tech__list">
+                        @foreach (var f in _technical.Take(_techShown))
+                        {
+                            <li class="cv-tech__row" @key="f.Id">
+                                <FileName Name="@f.Name" />
+                                <span class="cv-tech__size">@Ua.Size(f.SizeBytes)</span>
+                                <MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small" Href="@Drive.GetDownloadUrl(f.Id)" aria-label="@($"Завантажити {f.Name}")" />
+                            </li>
+                        }
+                    </ul>
+                    @if (_technical.Count > _techShown)
+                    {
+                        <div class="cv-more" style="margin:0;padding:10px">
+                            <MudButton Variant="Variant.Text" OnClick="() => _techShown += PageSize">Показати ще @Math.Min(PageSize, _technical.Count - _techShown)</MudButton>
+                        </div>
+                    }
+                }
+            </section>
+        }
+    }
+</MudContainer>
+
+@if (SelectedFile is not null && _listing is not null)
+{
+    <FileViewer Files="_sortedFiles" CurrentId="@SelectedFile" FolderId="@FolderId" />
+}
+
+@code {
+    const int PageSize = 60;
+
+    [Parameter] public string FolderId { get; set; } = "";
+    [SupplyParameterFromQuery(Name = "file")] public string? SelectedFile { get; set; }
+
+    IReadOnlyList<PathSegment> _path = [];
+    CatalogFolder? _root;
+    DriveListing? _listing;
+    /// <summary>Файли, які має сенс дивитися: зображення, PDF, DOCX, текст. Саме вони в плитках, фільтрах і стрічці переглядача.</summary>
+    IReadOnlyList<DriveFile> _sortedFiles = [];
+    /// <summary>Файли без перегляду (.mat та подібні): дані для розрахунків, окремий згорнутий список.</summary>
+    IReadOnlyList<DriveFile> _technical = [];
+    IReadOnlyList<DriveFolder> _sortedFolders = [];
+    bool _loading = true, _treeOpen, _descOpen, _techOpen;
+    string? _error;
+    string _query = "", _cat = "all";
+    int _shown = PageSize, _techShown = PageSize;
+    string? _loadedId;
+    CancellationTokenSource? _cts;
+
+    string? Title => _root?.Title is { } t && _root.Id == FolderId ? t : _listing?.Folder.Name ?? _path.LastOrDefault()?.Name;
+
+    IReadOnlyList<DriveFolder> VisibleFolders => _cat != "all" ? [] : _sortedFolders.Where(Matches).ToList();
+
+    IReadOnlyList<DriveFile> VisibleFiles => _sortedFiles
+        .Where(f => _cat == "all" || (_cat == "img" ? f.IsImage : !f.IsImage))
+        .Where(f => Matches(f.Name))
+        .ToList();
+
+    bool Matches(DriveFolder f) => Matches(f.Name);
+    bool Matches(string name) => string.IsNullOrWhiteSpace(_query) || name.Contains(_query.Trim(), StringComparison.CurrentCultureIgnoreCase);
+
+    protected override void OnInitialized() => Collections.Changed += OnStoreChanged;
+
+    protected override void OnParametersSet()
+    {
+        if (_loadedId == FolderId) return;
+        _loadedId = FolderId;
+        _query = "";
+        _cat = "all";
+        _shown = PageSize;
+        _techShown = PageSize;
+        _descOpen = false;
+        _ = LoadAsync();
+    }
+
+    async Task LoadAsync()
+    {
+        _cts?.Cancel();
+        var cts = _cts = new CancellationTokenSource();
+        _loading = true;
+        _error = null;
+        _listing = null;
+        StateHasChanged();
+        try
+        {
+            var path = await Drive.GetPathAsync(FolderId, cts.Token);
+            if (path.Count == 0) throw new DriveAccessException("Папку не знайдено.");
+            _path = path;
+            _root = await Catalog.FindAsync(path[0].Id, cts.Token);
+            var listing = await Drive.GetListingAsync(FolderId, cts.Token);
+            var files = listing.Files.OrderBy(f => f.Name, NaturalComparer.Instance).ToList();
+            _sortedFolders = listing.Folders.OrderBy(f => f.Name, NaturalComparer.Instance).ToList();
+            _sortedFiles = files.Where(f => f.Kind != FileKind.Other).ToList();
+            _technical = files.Where(f => f.Kind == FileKind.Other).ToList();
+            // Службові файли розгорнуті лише тоді, коли в папці більше нічого немає.
+            _techOpen = _sortedFiles.Count == 0 && _sortedFolders.Count == 0;
+            _listing = listing;
+        }
+        catch (DriveAccessException e) { _error = e.Message; }
+        catch (OperationCanceledException) { return; }
+        _loading = false;
+        StateHasChanged();
+    }
+
+    string FileHref(DriveFile f) => $"folder/{FolderId}?file={Uri.EscapeDataString(f.Id)}";
+
+    void SetCat(string cat) { _cat = cat; _shown = PageSize; }
+    void OnQueryChanged(string q) { _query = q; _shown = PageSize; }
+    void ResetFilters() { _query = ""; _cat = "all"; }
+    void OnStoreChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Collections.Changed -= OnStoreChanged;
+        _cts?.Cancel();
+    }
+}

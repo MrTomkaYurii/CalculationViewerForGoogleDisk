@@ -1,0 +1,99 @@
+@page "/admin"
+@page "/admin/folders"
+@layout AdminLayout
+@implements IDisposable
+@inject IFolderCatalog Catalog
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<div class="cv-pagehead">
+    <div>
+        <h2 style="margin:0;font-size:20px;font-weight:600">Підключені папки</h2>
+        <p class="cv-muted" style="margin:4px 0 0">Відвідувачі бачать їх у цьому порядку. Файли лишаються в Google Drive, застосунок їх не копіює.</p>
+    </div>
+    <div class="cv-pagehead__actions">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="admin/folders/new">Додати папку</MudButton>
+    </div>
+</div>
+
+@if (_error is not null)
+{
+    <StateBox IsError="true" Icon="@Icons.Material.Outlined.CloudOff" Title="Не вдалося завантажити список" Text="@_error">
+        <Actions><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadAsync">Спробувати ще раз</MudButton></Actions>
+    </StateBox>
+}
+else if (_all is null)
+{
+    <div class="cv-skel" style="height:260px"></div>
+}
+else if (_all.Count == 0)
+{
+    <StateBox Icon="@Icons.Material.Outlined.FolderOff" Title="Жодної папки не підключено" Text="Додайте першу: вставте посилання на публічну папку Google Drive.">
+        <Actions><MudButton Variant="Variant.Filled" Color="Color.Primary" Href="admin/folders/new">Додати папку</MudButton></Actions>
+    </StateBox>
+}
+else
+{
+    <ul class="cv-alist">
+        @for (var i = 0; i < _all.Count; i++)
+        {
+            var f = _all[i];
+            var index = i;
+            <li class="cv-arow" @key="f.Id">
+                <div class="cv-arow__ord">
+                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp" Size="Size.Small" Disabled="@(index == 0)" OnClick="() => MoveAsync(f, -1)" aria-label="Вище" />
+                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Disabled="@(index == _all.Count - 1)" OnClick="() => MoveAsync(f, 1)" aria-label="Нижче" />
+                </div>
+                <div style="min-width:0">
+                    <a class="cv-arow__title" href="admin/folders/@f.Id">@f.Title</a>
+                    <div class="cv-arow__sub">@f.Id</div>
+                </div>
+                <div class="cv-arow__status">
+                    @if (string.IsNullOrWhiteSpace(f.Description)) { <span class="cv-pill cv-pill--neutral">Без опису</span> }
+                    else { <span class="cv-pill cv-pill--good"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />Є опис</span> }
+                </div>
+                <div class="cv-arow__desc cv-mono cv-muted" style="font-size:12.5px">@(f.UpdatedUtc is { } d ? Ua.Date(d) : "")</div>
+                <div class="cv-arow__actions">
+                    <MudTooltip Text="Відкрити як відвідувач"><MudIconButton Icon="@Icons.Material.Outlined.OpenInNew" Href="@($"folder/{f.Id}")" aria-label="Відкрити" /></MudTooltip>
+                    <MudTooltip Text="Редагувати"><MudIconButton Icon="@Icons.Material.Outlined.Edit" Href="@($"admin/folders/{f.Id}")" aria-label="Редагувати" /></MudTooltip>
+                    <MudTooltip Text="Прибрати зі списку"><MudIconButton Icon="@Icons.Material.Outlined.Delete" OnClick="() => RemoveAsync(f)" aria-label="Прибрати зі списку" /></MudTooltip>
+                </div>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    IReadOnlyList<CatalogFolder>? _all;
+    string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Catalog.Changed += OnChanged;
+        await LoadAsync();
+    }
+
+    async Task LoadAsync()
+    {
+        _error = null;
+        try { _all = await Catalog.GetAllAsync(); }
+        catch (DriveAccessException e) { _error = e.Message; }
+    }
+
+    Task MoveAsync(CatalogFolder f, int delta) => Catalog.MoveAsync(f.Id, delta);
+
+    async Task RemoveAsync(CatalogFolder f)
+    {
+        if (!await Dialogs.ConfirmAsync("Прибрати папку зі списку?", $"«{f.Title}» зникне з сайту для відвідувачів. Файли в Google Drive не зміняться.", "Прибрати")) return;
+        await Catalog.DeleteAsync(f.Id);
+        Snackbar.Add("Папку прибрано зі списку", Severity.Normal);
+    }
+
+    void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Catalog.Changed -= OnChanged;
+}

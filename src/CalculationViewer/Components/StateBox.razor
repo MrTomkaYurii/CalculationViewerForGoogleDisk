@@ -1,0 +1,17 @@
+<div class="cv-state @(IsError ? "cv-state--error" : "")" role="@(IsError ? "alert" : "status")">
+    <div class="cv-state__icon"><MudIcon Icon="@Icon" Size="Size.Large" /></div>
+    <h2>@Title</h2>
+    @if (!string.IsNullOrEmpty(Text)) { <p>@Text</p> }
+    @ChildContent
+    @if (Actions is not null) { <div class="cv-state__actions">@Actions</div> }
+</div>
+
+@code {
+    /// <summary>Порожній стан і помилка мають однакову форму: значок, заголовок, пояснення, дії.</summary>
+    [Parameter] public string Icon { get; set; } = Icons.Material.Outlined.FolderOpen;
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public bool IsError { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+}

@@ -1,0 +1,79 @@
+@inject ICollectionStore Collections
+@inject ISnackbar Snackbar
+
+<MudDialog Class="cv-sheet">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Додати в добірку</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="cv-sheet__item">
+            <MudIcon Icon="@(Draft.Kind == BookmarkKind.Folder ? Icons.Material.Outlined.Folder : Icons.Material.Outlined.InsertDriveFile)" Color="Color.Primary" />
+            <div class="cv-sheet__item-text">
+                <div class="cv-sheet__item-name">@Draft.OriginalName</div>
+                @if (!string.IsNullOrEmpty(Draft.Path)) { <div class="cv-sheet__item-path">@Draft.Path</div> }
+            </div>
+        </div>
+
+        <MudTextField @bind-Value="_title" Label="Назва закладки" Variant="Variant.Outlined" Immediate="true" Margin="Margin.Dense"
+                      HelperText="Так закладка називатиметься в добірці" />
+
+        <MudText Typo="Typo.overline" Class="mt-4" Style="display:block">Добірка</MudText>
+        <div class="cv-optlist" role="radiogroup" aria-label="Добірка">
+            @foreach (var c in _all)
+            {
+                var already = c.Items.Any(i => i.Kind == Draft.Kind && i.DriveId == Draft.DriveId);
+                <label class="cv-opt @(_selected == c.Id ? "is-selected" : "") @(already ? "is-disabled" : "")">
+                    <input type="radio" name="collection" checked="@(_selected == c.Id)" disabled="@already" @onchange="() => _selected = c.Id" />
+                    <span class="cv-opt__name">@c.Name</span>
+                    <span class="cv-opt__meta">@(already ? "вже додано" : Ua.Items(c.Items.Count))</span>
+                </label>
+            }
+            <label class="cv-opt @(_selected == NewKey ? "is-selected" : "")">
+                <input type="radio" name="collection" checked="@(_selected == NewKey)" @onchange="() => _selected = NewKey" />
+                <span class="cv-opt__name">Нова добірка</span>
+                <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+            </label>
+        </div>
+        @if (_selected == NewKey)
+        {
+            <MudTextField @bind-Value="_newName" Label="Назва нової добірки" Variant="Variant.Outlined" Immediate="true" Margin="Margin.Dense" AutoFocus="true" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Скасувати</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitAsync" Disabled="@(!CanSubmit)">Додати</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    const string NewKey = "__new";
+
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter, EditorRequired] public CollectionItem Draft { get; set; } = default!;
+
+    IReadOnlyList<BookmarkCollection> _all = [];
+    string _selected = NewKey;
+    string _title = "";
+    string _newName = "";
+
+    bool CanSubmit => !string.IsNullOrWhiteSpace(_title) && (_selected != NewKey || !string.IsNullOrWhiteSpace(_newName));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _title = Draft.Title;
+        _all = await Collections.GetAllAsync();
+        var free = _all.FirstOrDefault(c => !c.Items.Any(i => i.Kind == Draft.Kind && i.DriveId == Draft.DriveId));
+        _selected = free?.Id ?? NewKey;
+    }
+
+    void Cancel() => MudDialog.Cancel();
+
+    async Task SubmitAsync()
+    {
+        var target = _selected == NewKey ? await Collections.CreateAsync(_newName) : _all.First(c => c.Id == _selected);
+        Draft.Title = _title.Trim();
+        await Collections.AddItemAsync(target.Id, Draft);
+        Snackbar.Add($"Додано в добірку «{target.Name}»", Severity.Success);
+        MudDialog.Close(DialogResult.Ok(target.Id));
+    }
+}

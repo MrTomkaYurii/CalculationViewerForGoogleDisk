@@ -1,0 +1,18 @@
+<ul class="cv-tlist" role="tree">
+    <FolderTreeNode Id="@Root.Id" Name="@Root.Name" CurrentId="@CurrentId" Open="_open" />
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PathSegment> Path { get; set; } = [];
+    [Parameter, EditorRequired] public string CurrentId { get; set; } = "";
+
+    readonly HashSet<string> _open = [];
+
+    PathSegment Root => Path[0];
+
+    protected override void OnParametersSet()
+    {
+        // Предки поточної папки завжди розгорнуті. Те, що користувач розгорнув сам, лишається.
+        foreach (var s in Path) _open.Add(s.Id);
+    }
+}

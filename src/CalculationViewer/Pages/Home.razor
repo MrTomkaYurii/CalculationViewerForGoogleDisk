@@ -1,0 +1,99 @@
+@page "/"
+@implements IDisposable
+@inject IFolderCatalog Catalog
+
+<PageTitle>Розрахунки</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="cv-page">
+    <section class="cv-intro">
+        <h1>Розрахунки</h1>
+        <p class="cv-lead">Оберіть папку, щоб переглянути розрахунки, рисунки й документи. Вхід не потрібен.</p>
+    </section>
+
+    <div class="cv-toolbar">
+        <MudTextField @bind-Value="_query" Class="cv-search" Placeholder="Знайти папку за назвою" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" Immediate="true" Clearable="true"
+                      aria-label="Знайти папку за назвою" />
+        @if (_all is not null)
+        {
+            <span class="cv-mono cv-muted">@Ua.Folders(Filtered.Count())</span>
+        }
+    </div>
+
+    @if (_loading)
+    {
+        <div class="cv-cards" aria-busy="true">
+            @for (var i = 0; i < 6; i++) { <div class="cv-skel" style="height:148px"></div> }
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <StateBox IsError="true" Icon="@Icons.Material.Outlined.CloudOff" Title="Не вдалося завантажити список папок" Text="@_error">
+            <Actions><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadAsync">Спробувати ще раз</MudButton></Actions>
+        </StateBox>
+    }
+    else if (_all is { Count: 0 })
+    {
+        <StateBox Icon="@Icons.Material.Outlined.FolderOff" Title="Папок поки немає" Text="Адміністратор ще не підключив жодної папки." />
+    }
+    else if (!Filtered.Any())
+    {
+        <StateBox Icon="@Icons.Material.Outlined.SearchOff" Title="Нічого не знайдено" Text="@($"За запитом «{_query}» немає папок. Спробуйте коротше слово.")" />
+    }
+    else
+    {
+        <div class="cv-cards">
+            @foreach (var f in Filtered)
+            {
+                <a class="cv-fcard" href="folder/@f.Id" @key="f.Id">
+                    <div class="cv-fcard__head">
+                        <span class="cv-fcard__icon"><MudIcon Icon="@Icons.Material.Outlined.Folder" /></span>
+                        @if (f.UpdatedUtc is { } d) { <span class="cv-fcard__date">@Ua.Date(d)</span> }
+                    </div>
+                    <h2 class="cv-fcard__title">@f.Title</h2>
+                    @if (!string.IsNullOrWhiteSpace(f.Description)) { <p class="cv-fcard__desc">@PlainText(f.Description)</p> }
+                    <div class="cv-fcard__foot"><span>Відкрити</span><MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" /></div>
+                </a>
+            }
+        </div>
+    }
+</MudContainer>
+
+@code {
+    IReadOnlyList<CatalogFolder>? _all;
+    string _query = "";
+    bool _loading = true;
+    string? _error;
+    CancellationTokenSource? _cts;
+
+    IEnumerable<CatalogFolder> Filtered => (_all ?? [])
+        .Where(f => string.IsNullOrWhiteSpace(_query) || f.Title.Contains(_query.Trim(), StringComparison.CurrentCultureIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        Catalog.Changed += OnChanged;
+        await LoadAsync();
+    }
+
+    async Task LoadAsync()
+    {
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        _loading = true;
+        _error = null;
+        try { _all = await Catalog.GetAllAsync(_cts.Token); }
+        catch (DriveAccessException e) { _error = e.Message; }
+        catch (OperationCanceledException) { return; }
+        _loading = false;
+    }
+
+    void OnChanged() => _ = InvokeAsync(LoadAsync);
+
+    static string PlainText(string markdown) => System.Text.RegularExpressions.Regex.Replace(markdown, @"[#*`>\[\]]|\(https?://[^)]*\)", "").Trim();
+
+    public void Dispose()
+    {
+        Catalog.Changed -= OnChanged;
+        _cts?.Cancel();
+    }
+}
