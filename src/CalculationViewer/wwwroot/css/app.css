@@ -50,6 +50,7 @@
 html, body { height: 100%; }
 body {
     margin: 0;
+    overflow-x: hidden;
     background: var(--cv-bg);
     color: var(--mud-palette-text-primary);
     -webkit-font-smoothing: antialiased;
@@ -98,7 +99,7 @@ h1, h2, h3 { text-wrap: balance; }
 .cv-page.mud-container { padding-block: 24px 64px; }
 
 .cv-tabbar {
-    display: none; position: fixed; inset: auto 0 0 0; z-index: 1100; background: var(--cv-surface); border-top: 1px solid var(--cv-line);
+    display: none; position: fixed; inset: auto 0 0 0; width: 100%; max-width: 100vw; box-sizing: border-box; z-index: 1100; background: var(--cv-surface); border-top: 1px solid var(--cv-line);
     padding-bottom: env(safe-area-inset-bottom, 0px); grid-template-columns: repeat(3, 1fr);
 }
 .cv-tab {
@@ -176,24 +177,94 @@ h1, h2, h3 { text-wrap: balance; }
 .cv-legend__titles .cv-mono { font-size: 11.5px; }
 .cv-legend__item:not(:has(.cv-legend__body)) .cv-legend__head { border-bottom: 0; margin-bottom: 0; padding-bottom: 10px; }
 
-/* Опис компактний: дві колонки (текст ліворуч, список «У папці» праворуч), дрібніший шрифт і щільніші рядки.
-   Друга колонка з'являється, щойно вміщаються дві колонки по ~22rem. На телефоні колонка одна. */
-.cv-legend__body { columns: 2 22rem; column-gap: 36px; padding-bottom: 8px; }
-.cv-legend__body .cv-md { font-size: 13px; line-height: 1.42; }
-.cv-legend__body .cv-md > :first-child { margin-top: 0; }
-.cv-legend__body .cv-md p { margin: .25em 0 .55em; }
-.cv-legend__body .cv-md ul, .cv-legend__body .cv-md ol { margin: .2em 0 .5em; padding-left: 1.15em; }
-.cv-legend__body .cv-md li { margin: .1em 0; }
-.cv-legend__body .cv-md h2, .cv-legend__body .cv-md h3 { margin: .1em 0 .3em; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--cv-muted); }
-.cv-legend__body .cv-md code { font-size: .92em; padding: 0 4px; }
-.cv-legend__body .cv-md p, .cv-legend__body .cv-md li { break-inside: avoid; }
-.cv-legend__body .cv-md h2, .cv-legend__body .cv-md h3 { break-after: avoid; }
-/* Розділ під заголовком (наприклад «У папці») завжди починається зверху другої колонки: у всіх блоках однаково. */
-.cv-legend__body .cv-md h2:not(:first-child) { break-before: column; margin-top: .1em; }
+/* Перемикач вкладок опису на мобільних пристроях */
+.cv-legend__tabs {
+    display: inline-flex;
+    align-items: center;
+    background: var(--cv-sunken);
+    padding: 3px;
+    border-radius: 9px;
+    gap: 3px;
+    margin: 0 0 14px;
+    border: 1px solid var(--cv-line);
+    max-width: 100%;
+}
+.cv-ltab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: var(--cv-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.cv-ltab:hover {
+    color: var(--mud-palette-text-primary);
+}
+.cv-ltab.is-active {
+    background: var(--cv-surface);
+    color: var(--cv-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Базові стилі опису */
+.cv-legend__body { padding-bottom: 8px; width: 100%; max-width: 100%; }
+.cv-desc-part { min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
+.cv-desc-part .cv-md { font-size: 13px; line-height: 1.44; }
+.cv-desc-part .cv-md > :first-child { margin-top: 0; }
+.cv-desc-part .cv-md p { margin: .25em 0 .55em; }
+.cv-desc-part .cv-md ul, .cv-desc-part .cv-md ol { margin: .2em 0 .5em; padding-left: 1.15em; }
+.cv-desc-part .cv-md li { margin: .1em 0; }
+.cv-desc-part .cv-md h2, .cv-desc-part .cv-md h3 { margin: .1em 0 .3em; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--cv-muted); }
+.cv-desc-part .cv-md code { font-size: .92em; padding: 0 4px; word-break: break-all; }
+.cv-desc-part .cv-md pre { max-width: 100%; overflow-x: auto; }
+
+/* На мобільних (до 767.98px): таби активні, неактивна частина ховається */
+@media (max-width: 767.98px) {
+    .cv-desc-part.is-hidden-mobile {
+        display: none !important;
+    }
+}
+
+/* На комп'ютері (від 768px): таби ховаються, обидва блоки відображаються поруч у 2 колонки */
+@media (min-width: 768px) {
+    .cv-legend__tabs {
+        display: none !important;
+    }
+    .cv-legend__body {
+        display: flex;
+        gap: 36px;
+        align-items: flex-start;
+    }
+    .cv-desc-part--main {
+        flex: 1 1 50%;
+        min-width: 0;
+    }
+    .cv-desc-part--contents {
+        flex: 1 1 50%;
+        min-width: 0;
+        border-left: 1px dashed var(--cv-line-strong);
+        padding-left: 24px;
+    }
+    .cv-desc-part.is-hidden-mobile {
+        display: block !important;
+    }
+}
+
 @media (max-width: 599.98px) {
     .cv-legend__item { padding: 14px 14px 4px; }
     .cv-legend__title { font-size: 18px; }
     .cv-legend__open { width: 100%; }
+    .cv-legend__tabs { width: 100%; display: flex; }
+    .cv-ltab { flex: 1; justify-content: center; }
 }
 
 /* ---------- Стани ---------- */

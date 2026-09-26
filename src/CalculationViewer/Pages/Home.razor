@@ -65,7 +65,7 @@
                         </header>
                         @if (!string.IsNullOrWhiteSpace(f.Description))
                         {
-                            <div class="cv-legend__body"><MarkdownView Source="@f.Description" /></div>
+                            <FolderDescription Description="@f.Description" />
                         }
                     </article>
                 }

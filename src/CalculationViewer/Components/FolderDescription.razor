@@ -1,0 +1,71 @@
+@if (!string.IsNullOrWhiteSpace(Description))
+{
+    @if (HasContentsPart)
+    {
+        <div class="cv-legend__tabs" role="tablist" aria-label="Перемикач розділів">
+            <button type="button" role="tab"
+                    class="cv-ltab @(_activeTab == 0 ? "is-active" : "")"
+                    aria-selected="@(_activeTab == 0)"
+                    @onclick="() => _activeTab = 0">
+                <MudIcon Icon="@Icons.Material.Outlined.Description" Size="Size.Small" Style="font-size:16px" />
+                <span>Опис</span>
+            </button>
+            <button type="button" role="tab"
+                    class="cv-ltab @(_activeTab == 1 ? "is-active" : "")"
+                    aria-selected="@(_activeTab == 1)"
+                    @onclick="() => _activeTab = 1">
+                <MudIcon Icon="@Icons.Material.Outlined.FolderOpen" Size="Size.Small" Style="font-size:16px" />
+                <span>У папці</span>
+            </button>
+        </div>
+    }
+
+    <div class="cv-legend__body">
+        <div class="cv-desc-part cv-desc-part--main @(_activeTab != 0 && HasContentsPart ? "is-hidden-mobile" : "")">
+            <MarkdownView Source="@MainPart" />
+        </div>
+        @if (HasContentsPart)
+        {
+            <div class="cv-desc-part cv-desc-part--contents @(_activeTab != 1 ? "is-hidden-mobile" : "")">
+                <MarkdownView Source="@ContentsPart" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string? Description { get; set; }
+
+    int _activeTab = 0; // 0 = опис, 1 = у папці
+    string MainPart = "";
+    string ContentsPart = "";
+    bool HasContentsPart => !string.IsNullOrWhiteSpace(ContentsPart);
+
+    protected override void OnParametersSet()
+    {
+        SplitDescription();
+    }
+
+    void SplitDescription()
+    {
+        if (string.IsNullOrWhiteSpace(Description))
+        {
+            MainPart = "";
+            ContentsPart = "";
+            return;
+        }
+
+        const string marker = "## У папці";
+        var idx = Description.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0)
+        {
+            MainPart = Description[..idx].TrimEnd();
+            ContentsPart = Description[idx..].TrimStart();
+        }
+        else
+        {
+            MainPart = Description;
+            ContentsPart = "";
+        }
+    }
+}
