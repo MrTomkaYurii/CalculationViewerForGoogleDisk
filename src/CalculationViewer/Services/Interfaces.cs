@@ -39,6 +39,8 @@ public interface IDriveBrowser
     /// <summary>Текст для файлів .txt/.csv. Null, якщо треба показувати через <see cref="GetPreviewUrl"/>.</summary>
     Task<TextPreview?> GetTextPreviewAsync(DriveFile file, CancellationToken ct = default);
     string GetOpenUrl(string fileId);
+    /// <summary>Адреса штатного скачування файлу (оригінал під його іменем). Для документів Google це експорт у Word/Excel/PowerPoint.</summary>
+    string GetDownloadUrl(DriveFile file);
     string GetDownloadUrl(string fileId);
 }
 

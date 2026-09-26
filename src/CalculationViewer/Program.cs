@@ -39,5 +39,6 @@ builder.Services.AddSingleton<IAdminSession, DevAdminSession>();
 
 builder.Services.AddSingleton<UiPrefs>();
 builder.Services.AddScoped<BookmarkActions>();
+builder.Services.AddScoped<FileDownloads>();
 
 await builder.Build().RunAsync();

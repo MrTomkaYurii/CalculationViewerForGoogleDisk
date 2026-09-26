@@ -18,7 +18,10 @@
             <span class="cv-file__meta">@Ua.Size(File.SizeBytes)</span>
         </div>
     </a>
-    <StarButton IsOn="Bookmarked" OnClick="OnStar" Size="Size.Small" />
+    <div class="cv-file__actions">
+        <DownloadButton File="File" />
+        <StarButton IsOn="Bookmarked" OnClick="OnStar" Size="Size.Small" Class="cv-act" />
+    </div>
 </article>
 
 @code {

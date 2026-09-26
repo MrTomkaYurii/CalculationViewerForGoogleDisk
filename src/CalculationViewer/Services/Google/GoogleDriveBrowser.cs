@@ -271,5 +271,17 @@ internal sealed partial class GoogleDriveBrowser(HttpClient http, string apiKey,
 
     public string GetOpenUrl(string fileId) => $"https://drive.google.com/file/d/{Uri.EscapeDataString(fileId)}/view";
 
-    public string GetDownloadUrl(string fileId) => $"https://drive.google.com/uc?export=download&id={Uri.EscapeDataString(fileId)}";
+    public string GetDownloadUrl(string fileId) => $"https://drive.usercontent.google.com/download?id={Uri.EscapeDataString(fileId)}&export=download&confirm=t";
+
+    /// <summary>
+    /// Штатне скачування Google. Документи Google не мають «сирих» байтів, тож вони експортуються у Word/Excel/PowerPoint.
+    /// Для решти адреса drive.usercontent.google.com/download (confirm=t пропускає попередження антивіруса для великих файлів).
+    /// </summary>
+    public string GetDownloadUrl(DriveFile file) => file.MimeType switch
+    {
+        "application/vnd.google-apps.document" => $"https://docs.google.com/document/d/{file.Id}/export?format=docx",
+        "application/vnd.google-apps.spreadsheet" => $"https://docs.google.com/spreadsheets/d/{file.Id}/export?format=xlsx",
+        "application/vnd.google-apps.presentation" => $"https://docs.google.com/presentation/d/{file.Id}/export/pptx",
+        _ => $"https://drive.usercontent.google.com/download?id={Uri.EscapeDataString(file.Id)}&export=download&confirm=t",
+    };
 }

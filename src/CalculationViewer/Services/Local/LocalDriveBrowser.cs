@@ -92,4 +92,5 @@ internal sealed class LocalDriveBrowser(HttpClient http) : IDriveBrowser
 
     public string GetOpenUrl(string fileId) => Url(fileId);
     public string GetDownloadUrl(string fileId) => Url(fileId) + "?download=true";
+    public string GetDownloadUrl(DriveFile file) => GetDownloadUrl(file.Id);
 }

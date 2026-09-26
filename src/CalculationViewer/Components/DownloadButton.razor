@@ -1,0 +1,18 @@
+@inject FileDownloads Downloads
+
+<MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small" Class="@($"cv-act cv-download {Class}")" OnClick="DownloadAsync" Disabled="_busy"
+               aria-label="@($"Завантажити {File.Name}")" title="@($"Завантажити {File.Name}")" />
+
+@code {
+    [Parameter, EditorRequired] public DriveFile File { get; set; } = default!;
+    [Parameter] public string? Class { get; set; }
+
+    bool _busy;
+
+    async Task DownloadAsync()
+    {
+        _busy = true;
+        try { await Downloads.DownloadAsync(File); }
+        finally { _busy = false; }
+    }
+}
