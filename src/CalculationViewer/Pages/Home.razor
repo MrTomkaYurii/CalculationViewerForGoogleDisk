@@ -7,13 +7,13 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="cv-page">
     <section class="cv-intro">
         <h1>Розрахунки</h1>
-        <p class="cv-lead">Оберіть папку, щоб переглянути розрахунки, рисунки й документи. Вхід не потрібен.</p>
+        <p class="cv-lead">Нижче опис кожної папки: що в ній лежить і як це пораховано. Натисніть «Відкрити папку», щоб перейти до файлів. Вхід не потрібен.</p>
     </section>
 
     <div class="cv-toolbar">
-        <MudTextField @bind-Value="_query" Class="cv-search" Placeholder="Знайти папку за назвою" Variant="Variant.Outlined" Margin="Margin.Dense"
+        <MudTextField @bind-Value="_query" Class="cv-search" Placeholder="Знайти за назвою або описом" Variant="Variant.Outlined" Margin="Margin.Dense"
                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" Immediate="true" Clearable="true"
-                      aria-label="Знайти папку за назвою" />
+                      aria-label="Знайти за назвою або описом" />
         @if (_all is not null)
         {
             <span class="cv-mono cv-muted">@Ua.Folders(Filtered.Count())</span>
@@ -23,8 +23,8 @@
     @if (_loading)
     {
         <LoadingNote Text="Завантажуємо список папок…" />
-        <div class="cv-cards" aria-busy="true">
-            @for (var i = 0; i < 6; i++) { <div class="cv-skel" style="height:148px"></div> }
+        <div class="cv-legend" aria-busy="true">
+            @for (var i = 0; i < 3; i++) { <div class="cv-skel" style="height:260px"></div> }
         </div>
     }
     else if (_error is not null)
@@ -39,22 +39,27 @@
     }
     else if (!Filtered.Any())
     {
-        <StateBox Icon="@Icons.Material.Outlined.SearchOff" Title="Нічого не знайдено" Text="@($"За запитом «{_query}» немає папок. Спробуйте коротше слово.")" />
+        <StateBox Icon="@Icons.Material.Outlined.SearchOff" Title="Нічого не знайдено" Text="@($"За запитом «{_query}» немає папок чи описів. Спробуйте коротше слово.")" />
     }
     else
     {
-        <div class="cv-cards">
+        <div class="cv-legend">
             @foreach (var f in Filtered)
             {
-                <a class="cv-fcard" href="folder/@f.Id" @key="f.Id">
-                    <div class="cv-fcard__head">
-                        <span class="cv-fcard__icon"><MudIcon Icon="@Icons.Material.Outlined.Folder" /></span>
-                        @if (f.UpdatedUtc is { } d) { <span class="cv-fcard__date">@Ua.Date(d)</span> }
-                    </div>
-                    <h2 class="cv-fcard__title">@f.Title</h2>
-                    @if (!string.IsNullOrWhiteSpace(f.Description)) { <p class="cv-fcard__desc">@PlainText(f.Description)</p> }
-                    <div class="cv-fcard__foot"><span>Відкрити</span><MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" /></div>
-                </a>
+                <article class="cv-legend__item" @key="f.Id" aria-label="@f.Title">
+                    <header class="cv-legend__head">
+                        <span class="cv-legend__icon"><MudIcon Icon="@Icons.Material.Outlined.Folder" /></span>
+                        <div class="cv-legend__titles">
+                            <h2 class="cv-legend__title">@f.Title</h2>
+                            @if (f.UpdatedUtc is { } d) { <span class="cv-mono cv-muted">оновлено @Ua.Date(d)</span> }
+                        </div>
+                        <MudButton Href="@($"folder/{f.Id}")" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" Class="cv-legend__open">Відкрити папку</MudButton>
+                    </header>
+                    @if (!string.IsNullOrWhiteSpace(f.Description))
+                    {
+                        <div class="cv-legend__body"><MarkdownView Source="@f.Description" /></div>
+                    }
+                </article>
             }
         </div>
     }
@@ -67,8 +72,11 @@
     string? _error;
     CancellationTokenSource? _cts;
 
+    // Пошук іде і за назвою, і за текстом опису: на головній користувач читає саме опис.
     IEnumerable<CatalogFolder> Filtered => (_all ?? [])
-        .Where(f => string.IsNullOrWhiteSpace(_query) || f.Title.Contains(_query.Trim(), StringComparison.CurrentCultureIgnoreCase));
+        .Where(f => string.IsNullOrWhiteSpace(_query)
+                    || f.Title.Contains(_query.Trim(), StringComparison.CurrentCultureIgnoreCase)
+                    || f.Description.Contains(_query.Trim(), StringComparison.CurrentCultureIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
@@ -89,8 +97,6 @@
     }
 
     void OnChanged() => _ = InvokeAsync(LoadAsync);
-
-    static string PlainText(string markdown) => System.Text.RegularExpressions.Regex.Replace(markdown, @"[#*`>\[\]]|\(https?://[^)]*\)", "").Trim();
 
     public void Dispose()
     {

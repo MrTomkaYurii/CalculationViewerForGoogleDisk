@@ -50,7 +50,6 @@
     }
     else if (_error is not null)
     {
-        @Description
         @if (_notConnected)
         {
             <StateBox Icon="@Icons.Material.Outlined.CloudQueue" Title="Файли ще не підключено" Text="@_error">
@@ -79,8 +78,6 @@
             @if (docs > 0) { <div class="cv-stamp__cell"><div class="cv-stamp__label">Документів</div><div class="cv-stamp__value">@Ua.Num(docs)</div></div> }
             @if (_technical.Count > 0) { <div class="cv-stamp__cell"><div class="cv-stamp__label">Службових</div><div class="cv-stamp__value">@Ua.Num(_technical.Count)</div></div> }
         </div>
-
-        @Description
 
         @if (!hasMain && _technical.Count == 0)
         {
@@ -237,20 +234,7 @@
     /// <summary>Файли без перегляду (.mat та подібні): дані для розрахунків, окремий згорнутий список.</summary>
     IReadOnlyList<DriveFile> _technical = [];
     IReadOnlyList<DriveFolder> _sortedFolders = [];
-    bool _loading = true, _treeOpen, _descOpen, _techOpen, _notConnected;
-
-    /// <summary>Опис папки (Markdown). Показується і над вмістом, і тоді, коли вміст ще недоступний.</summary>
-    RenderFragment Description => @<text>
-        @if (_root is not null && _root.Id == FolderId && !string.IsNullOrWhiteSpace(_root.Description))
-        {
-            <section class="cv-desc @(_descOpen ? "is-open" : "")" aria-label="Опис папки">
-                <div class="cv-desc__body"><MarkdownView Source="@_root.Description" /></div>
-                <button type="button" class="cv-desc__toggle" @onclick="() => _descOpen = !_descOpen" aria-expanded="@_descOpen.ToString().ToLowerInvariant()">
-                    @(_descOpen ? "Згорнути опис" : "Показати опис повністю")
-                </button>
-            </section>
-        }
-    </text>;
+    bool _loading = true, _treeOpen, _techOpen, _notConnected;
     string? _error;
     string _query = "", _cat = "all";
     int _shown = PageSize, _techShown = PageSize;
@@ -279,7 +263,6 @@
         _cat = "all";
         _shown = PageSize;
         _techShown = PageSize;
-        _descOpen = false;
         _ = LoadAsync();
     }
 
