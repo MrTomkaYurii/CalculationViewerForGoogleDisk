@@ -77,6 +77,8 @@ internal sealed class LocalDriveBrowser(HttpClient http) : IDriveBrowser
     string Url(string fileId) => new Uri(http.BaseAddress!, $"api/file/{Uri.EscapeDataString(fileId)}").ToString();
 
     public string GetThumbnailUrl(string fileId, int size = 400) => Url(fileId);
+    public IReadOnlyList<string> GetThumbnailFallbacks(string fileId, int size = 400) => [];
+    public string? GetImageFallbackUrl(string fileId) => null;
     public string GetImageUrl(string fileId) => Url(fileId);
     public string GetContentUrl(string fileId) => Url(fileId);
     public string? GetPreviewUrl(DriveFile file) => file.Kind == FileKind.Pdf ? Url(file.Id) : null;

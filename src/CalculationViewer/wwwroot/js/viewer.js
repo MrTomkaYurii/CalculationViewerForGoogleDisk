@@ -194,9 +194,16 @@ export function attach(root, dotnet) {
         const i = img();
         if (!i || (i.complete && i.naturalWidth)) { stage.classList.remove('is-loading'); return; }
         stage.classList.add('is-loading');
-        const done = () => stage.classList.remove('is-loading');
+        const done = () => { stage.classList.remove('is-loading'); clearInterval(watchdog); };
         i.addEventListener('load', done, { once: true });
-        i.addEventListener('error', done, { once: true });
+        // Помилка не знімає шестерню: js/media-loading.js повторює запит і перемикає канал, поки зображення не з'явиться.
+        // Основний канал інколи «висить» без помилки, тому після таймауту вважаємо його відмовою й даємо той самий повтор.
+        let waited = 0;
+        const watchdog = setInterval(() => {
+            waited += 1000;
+            if (!i.isConnected || (i.complete && i.naturalWidth)) return done();
+            if (waited % 8000 === 0) i.dispatchEvent(new Event('error'));
+        }, 1000);
     }
 
     return {

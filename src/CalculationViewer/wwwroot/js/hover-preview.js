@@ -25,13 +25,30 @@
         img = overlay.querySelector('.cv-hover__img');
         nameEl = overlay.querySelector('.cv-hover__name');
         metaEl = overlay.querySelector('.cv-hover__meta');
-        img.addEventListener('load', () => overlay.classList.remove('is-loading'));
-        img.addEventListener('error', hide);
+        img.addEventListener('load', () => { overlay.classList.remove('is-loading'); img.dataset.tries = '0'; });
+        // Оригінал може отримати відмову (обмеження Google): одразу пробуємо запасний канал, далі чергуємо канали з нарастаючою паузою,
+        // поки мишка на картинці.
+        img.addEventListener('error', () => advance());
+        // Основний канал інколи не відмовляє, а «висить»: чекати помилки не треба, через таймаут переходимо на інший канал.
+        setInterval(() => { if (isOpen && overlay.classList.contains('is-loading') && Date.now() - Number(img.dataset.token || 0) > 3500 * (Number(img.dataset.tries || 0) + 1)) advance(); }, 700);
+        function advance() {
+            const sources = [img.dataset.source, img.dataset.fallback].filter(Boolean);
+            const n = Number(img.dataset.tries || 0) + 1;
+            img.dataset.tries = String(n);
+            const next = sources[n % sources.length];
+            const wait = n === 1 && sources.length > 1 ? 250 : Math.min(700 * 2 ** Math.floor(n / sources.length), 10000);
+            const token = img.dataset.token;
+            setTimeout(() => { if (isOpen && img.dataset.token === token) { img.removeAttribute('src'); img.setAttribute('src', next); } }, wait);
+        }
     }
 
     function show(el) {
         ensure();
         overlay.classList.add('is-loading');
+        img.dataset.tries = '0';
+        img.dataset.token = String(Date.now());
+        img.dataset.source = el.dataset.previewSrc;
+        img.dataset.fallback = el.dataset.previewFallback || '';
         img.src = el.dataset.previewSrc;
         if (img.complete && img.naturalWidth) overlay.classList.remove('is-loading');
         nameEl.textContent = el.dataset.previewName || '';

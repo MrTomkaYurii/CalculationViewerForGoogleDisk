@@ -23,7 +23,7 @@ internal sealed partial class GoogleDriveBrowser(HttpClient http, string apiKey,
     readonly string _api = (apiBase ?? "https://www.googleapis.com/drive/v3/").TrimEnd('/') + "/";
     readonly string _thumbnail = thumbnailBase ?? "https://drive.google.com/thumbnail";
 
-    sealed record FileDto(string Id, string Name, string MimeType, string? Size, DateTime? ModifiedTime, List<string>? Parents);
+    sealed record FileDto(string Id, string Name, string MimeType, string? Size, DateTime? ModifiedTime, List<string>? Parents, string? ThumbnailLink = null);
     sealed record ListDto(List<FileDto>? Files, string? NextPageToken);
     sealed record ErrorDto(ErrorBody? Error);
     sealed record ErrorBody(List<ErrorItem>? Errors);
@@ -32,6 +32,8 @@ internal sealed partial class GoogleDriveBrowser(HttpClient http, string apiKey,
     /// <summary>Назва й батько кожної папки, яку ми вже бачили: з цього збирається шлях без зайвих запитів.</summary>
     readonly ConcurrentDictionary<string, (string Name, string? ParentId)> _meta = new();
     readonly ConcurrentDictionary<string, DriveListing> _listings = new();
+    /// <summary>thumbnailLink кожного файлу, який ми бачили у списках. Посилання діє кілька годин, вистачає на сеанс.</summary>
+    readonly ConcurrentDictionary<string, string> _thumbs = new();
 
     [GeneratedRegex(@"^[\w-]{10,}$")]
     private static partial Regex IdPattern();
@@ -112,7 +114,7 @@ internal sealed partial class GoogleDriveBrowser(HttpClient http, string apiKey,
         {
             var query = "q=" + Uri.EscapeDataString($"'{folderId}' in parents and trashed = false")
                         + "&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true"
-                        + "&fields=" + Uri.EscapeDataString("nextPageToken,files(id,name,mimeType,size,modifiedTime)")
+                        + "&fields=" + Uri.EscapeDataString("nextPageToken,files(id,name,mimeType,size,modifiedTime,thumbnailLink)")
                         + (pageToken is null ? "" : "&pageToken=" + Uri.EscapeDataString(pageToken));
             var page = await GetAsync<ListDto>("files", query, ct);
 
@@ -126,6 +128,7 @@ internal sealed partial class GoogleDriveBrowser(HttpClient http, string apiKey,
                 else if (f.MimeType != ShortcutMime)
                 {
                     long.TryParse(f.Size, out var size);
+                    if (!string.IsNullOrEmpty(f.ThumbnailLink)) _thumbs[f.Id] = f.ThumbnailLink;
                     files.Add(new DriveFile(f.Id, f.Name, folderId, KindOf(f.MimeType, f.Name), size,
                         f.ModifiedTime ?? DateTime.MinValue, f.MimeType));
                 }
@@ -198,9 +201,37 @@ internal sealed partial class GoogleDriveBrowser(HttpClient http, string apiKey,
 
     // ---------- адреси файлів ----------
 
-    public string GetThumbnailUrl(string fileId, int size = 400) => $"{_thumbnail}?id={Uri.EscapeDataString(fileId)}&sz=w{size}";
+    /// <summary>
+    /// Основна мініатюра: посилання thumbnailLink з відповіді Drive (CDN lh3.googleusercontent.com, розрахований на багато паралельних
+    /// завантажень). Його розмір задає суфікс «=sNNN». Якщо папку ще не бачили в цьому сеансі, беремо адресу drive.google.com/thumbnail.
+    /// </summary>
+    public string GetThumbnailUrl(string fileId, int size = 400)
+        => _thumbs.TryGetValue(fileId, out var link) ? ResizeThumbnail(link, size) : DriveThumbnail(fileId, size);
+
+    /// <summary>Запасні адреси: перша це drive.google.com/thumbnail, остання це сам файл (важкий, але точно є).</summary>
+    public IReadOnlyList<string> GetThumbnailFallbacks(string fileId, int size = 400)
+    {
+        var list = new List<string>(2);
+        if (_thumbs.ContainsKey(fileId)) list.Add(DriveThumbnail(fileId, size));
+        list.Add(GetContentUrl(fileId));
+        return list;
+    }
+
+    string DriveThumbnail(string fileId, int size) => $"{_thumbnail}?id={Uri.EscapeDataString(fileId)}&sz=w{size}";
+
+    [GeneratedRegex(@"=[sw]\d+[^/]*$")]
+    private static partial Regex SizeSuffixPattern();
+
+    static string ResizeThumbnail(string link, int size)
+        => SizeSuffixPattern().IsMatch(link) ? SizeSuffixPattern().Replace(link, $"=s{size}") : $"{link}=s{size}";
 
     public string GetImageUrl(string fileId) => GetContentUrl(fileId);
+
+    /// <summary>
+    /// Той самий файл через CDN Google (thumbnailLink у великому розмірі, без збільшення маленьких оригіналів). Це окремий канал від
+    /// скачування через API: коли один відмовляє (ліміти, тимчасове обмеження), працює інший.
+    /// </summary>
+    public string? GetImageFallbackUrl(string fileId) => _thumbs.TryGetValue(fileId, out var link) ? ResizeThumbnail(link, 4000) : null;
 
     public string GetContentUrl(string fileId)
         => $"{_api}files/{Uri.EscapeDataString(fileId)}?alt=media&supportsAllDrives=true&key={Uri.EscapeDataString(apiKey)}";

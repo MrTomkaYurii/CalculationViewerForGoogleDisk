@@ -49,7 +49,7 @@
                             <div class="cv-mosaic__cell @(item is null ? "cv-mosaic__cell--empty" : "")">
                                 @if (item is { Kind: BookmarkKind.File, FileKind: FileKind.Image })
                                 {
-                                    <img src="@Drive.GetThumbnailUrl(item.DriveId, 160)" alt="" loading="lazy" decoding="async" />
+                                    <Thumb FileId="@item.DriveId" Size="160" />
                                 }
                                 else if (item is not null)
                                 {

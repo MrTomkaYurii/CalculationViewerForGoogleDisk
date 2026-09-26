@@ -27,7 +27,11 @@ public interface IDriveBrowser
     Task<FolderCheckResult> CheckFolderAsync(string linkOrPath, CancellationToken ct = default);
 
     string GetThumbnailUrl(string fileId, int size = 400);
+    /// <summary>Запасні адреси мініатюри по черзі, якщо основна не завантажилась (обмеження Google, збій мережі). Може бути порожнім.</summary>
+    IReadOnlyList<string> GetThumbnailFallbacks(string fileId, int size = 400);
     string GetImageUrl(string fileId);
+    /// <summary>Запасна адреса великого зображення, незалежна від основної (інший канал Google). Null, якщо її немає.</summary>
+    string? GetImageFallbackUrl(string fileId);
     /// <summary>Адреса самого файлу (байти). Потрібна, щоб показати .docx у браузері, коли iframe-перегляд недоступний.</summary>
     string GetContentUrl(string fileId);
     /// <summary>Адреса для iframe (у Drive: /file/d/{id}/preview, працює для PDF, DOCX, TXT). Null, якщо такого перегляду немає.</summary>

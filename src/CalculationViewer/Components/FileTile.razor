@@ -2,11 +2,11 @@
 
 <article class="cv-file cv-kind--@File.Kind">
     <a class="cv-file__link" href="@Href" title="@($"{File.Name} · {Ua.Size(File.SizeBytes)} · {Ua.Date(File.ModifiedUtc)}")">
-        <div class="cv-file__thumb" data-preview-src="@(File.IsImage ? Drive.GetImageUrl(File.Id) : null)"
+        <div class="cv-file__thumb" data-preview-src="@(File.IsImage ? Drive.GetImageUrl(File.Id) : null)" data-preview-fallback="@(File.IsImage ? Drive.GetImageFallbackUrl(File.Id) : null)"
              data-preview-name="@(File.IsImage ? File.Name : null)" data-preview-meta="@(File.IsImage ? Ua.Size(File.SizeBytes) : null)">
             @if (File.IsImage)
             {
-                <img src="@Drive.GetThumbnailUrl(File.Id)" alt="" loading="lazy" decoding="async" />
+                <Thumb FileId="@File.Id" Version="@File.ModifiedUtc.Ticks.ToString()" />
             }
             else
             {

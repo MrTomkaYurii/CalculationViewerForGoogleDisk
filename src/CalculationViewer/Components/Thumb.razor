@@ -1,0 +1,13 @@
+@inject IDriveBrowser Drive
+
+@* src навмисно немає: мініатюру в клітинку ставить черга js/media-loading.js. Так браузер не шле десятки запитів одразу
+   (Google відповідає на це 429), а черга йде партіями, повторює невдалі й кешує отримане. *@
+<img data-thumb="@Drive.GetThumbnailUrl(FileId, Size)" data-key="@($"{FileId}|{Size}|{Version}")"
+     data-fallbacks="@string.Join('|', Drive.GetThumbnailFallbacks(FileId, Size))" alt="" decoding="async" />
+
+@code {
+    [Parameter, EditorRequired] public string FileId { get; set; } = "";
+    [Parameter] public int Size { get; set; } = 400;
+    /// <summary>Версія файлу (наприклад, дата зміни): коли файл змінили, кеш мініатюри оновиться.</summary>
+    [Parameter] public string Version { get; set; } = "";
+}

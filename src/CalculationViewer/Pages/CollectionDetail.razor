@@ -54,7 +54,7 @@
                            data-preview-name="@(item is { Kind: BookmarkKind.File, FileKind: FileKind.Image } ? item.Title : null)">
                             @if (item is { Kind: BookmarkKind.File, FileKind: FileKind.Image })
                             {
-                                <img src="@Drive.GetThumbnailUrl(item.DriveId, 160)" alt="" loading="lazy" decoding="async" />
+                                <Thumb FileId="@item.DriveId" Size="160" />
                             }
                             else
                             {

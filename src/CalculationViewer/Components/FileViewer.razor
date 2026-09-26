@@ -35,7 +35,7 @@
         <div class="cv-viewer__stage">
             @if (_file.IsImage)
             {
-                <img class="cv-viewer__img" src="@Drive.GetImageUrl(_file.Id)" alt="@_file.Name" draggable="false" />
+                <img class="cv-viewer__img" src="@Drive.GetImageUrl(_file.Id)" data-fallbacks="@Drive.GetImageFallbackUrl(_file.Id)" alt="@_file.Name" draggable="false" />
             }
             else if (_previewUrl is not null)
             {
@@ -88,7 +88,7 @@
                     <button type="button" class="cv-strip__item cv-kind--@f.Kind @(f.Id == _file.Id ? "is-current" : "")" title="@f.Name" @onclick="() => GoToAsync(f)" @key="f.Id">
                         @if (f.IsImage)
                         {
-                            <img src="@Drive.GetThumbnailUrl(f.Id, 160)" alt="" loading="lazy" decoding="async" />
+                            <Thumb FileId="@f.Id" Size="160" Version="@f.ModifiedUtc.Ticks.ToString()" />
                         }
                         else
                         {

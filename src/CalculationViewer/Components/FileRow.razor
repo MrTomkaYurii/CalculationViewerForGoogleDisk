@@ -2,11 +2,11 @@
 
 <div class="cv-frow cv-kind--@File.Kind">
     <a class="cv-frow__link" href="@Href" title="@File.Name">
-        <span class="cv-frow__thumb" data-preview-src="@(File.IsImage ? Drive.GetImageUrl(File.Id) : null)"
+        <span class="cv-frow__thumb" data-preview-src="@(File.IsImage ? Drive.GetImageUrl(File.Id) : null)" data-preview-fallback="@(File.IsImage ? Drive.GetImageFallbackUrl(File.Id) : null)"
               data-preview-name="@(File.IsImage ? File.Name : null)" data-preview-meta="@(File.IsImage ? Ua.Size(File.SizeBytes) : null)">
             @if (File.IsImage)
             {
-                <img src="@Drive.GetThumbnailUrl(File.Id)" alt="" loading="lazy" decoding="async" />
+                <Thumb FileId="@File.Id" Size="160" Version="@File.ModifiedUtc.Ticks.ToString()" />
             }
             else
             {
