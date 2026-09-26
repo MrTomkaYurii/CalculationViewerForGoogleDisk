@@ -74,8 +74,8 @@ else
                 <span class="cv-mono cv-muted" style="font-size:12.5px">@_description.Length символів</span>
                 <span style="flex:1"></span>
                 <div class="cv-seg cv-editor__tabs" role="group" aria-label="Режим редактора">
-                    <button type="button" aria-pressed="@(_tab == "edit")" @onclick='() => _tab = "edit"'>Редагувати</button>
-                    <button type="button" aria-pressed="@(_tab == "preview")" @onclick='() => _tab = "preview"'>Перегляд</button>
+                    <button type="button" aria-pressed="@(_tab == "edit" ? "true" : "false")" @onclick='() => _tab = "edit"'>Редагувати</button>
+                    <button type="button" aria-pressed="@(_tab == "preview" ? "true" : "false")" @onclick='() => _tab = "preview"'>Перегляд</button>
                 </div>
             </div>
             <div class="cv-editor" data-tab="@_tab">

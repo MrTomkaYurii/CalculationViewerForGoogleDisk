@@ -259,6 +259,18 @@ a.cv-crumb:hover { background: var(--cv-sunken); color: var(--mud-palette-text-p
 .cv-section__title .cv-mono { font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; }
 
 /* ---------- Папка: підпапки ---------- */
+/* Заголовок розділу з перемикачем «плитка / список» справа. */
+.cv-section__title--tools { align-items: center; justify-content: space-between; }
+.cv-section__title--tools .cv-seg { text-transform: none; letter-spacing: 0; }
+/* Підпапки списком: одна колонка, ім'я на весь рядок, дата зміни праворуч. */
+.cv-dlist { background: var(--cv-surface); border: 1px solid var(--cv-line); border-radius: var(--cv-radius); overflow: hidden; }
+.cv-drow { display: flex; align-items: center; gap: 4px; padding: 2px 6px 2px 14px; min-height: 46px; border-bottom: 1px solid var(--cv-line); }
+.cv-drow:last-child { border-bottom: 0; }
+.cv-drow:hover { background: var(--cv-primary-soft); }
+.cv-drow__link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.cv-drow__name { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-drow__date { flex: none; font-size: 12.5px; color: var(--cv-muted); }
+@media (max-width: 599.98px) { .cv-drow__date { display: none; } }
 .cv-dirs { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
 .cv-dir { position: relative; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 4px 6px 12px; background: var(--cv-surface); border: 1px solid var(--cv-line); border-radius: var(--cv-radius); }
 .cv-dir:hover { border-color: color-mix(in srgb, var(--cv-primary) 45%, var(--cv-line)); }

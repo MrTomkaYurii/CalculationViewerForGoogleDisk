@@ -8,7 +8,11 @@ public enum ViewMode { Grid, List }
 /// <summary>Налаштування вигляду, які користувач очікує побачити збереженими між папками.</summary>
 public sealed class UiPrefs
 {
+    /// <summary>Вигляд файлів: за замовчуванням плитка (картинки видно одразу).</summary>
     public ViewMode View { get; set; } = ViewMode.Grid;
+
+    /// <summary>Вигляд підпапок: за замовчуванням список (у папках їх бува десятки, список легше проглядати).</summary>
+    public ViewMode FolderView { get; set; } = ViewMode.List;
 }
 
 public static class DialogExtensions

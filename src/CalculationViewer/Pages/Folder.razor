@@ -102,15 +102,15 @@
                     @if (imgs > 0 && docs > 0)
                     {
                         <div class="cv-seg cv-seg--filters" role="group" aria-label="Тип файлів">
-                            <button type="button" aria-pressed="@(_cat == "all")" @onclick='() => SetCat("all")'>Усі <span class="cv-seg__n">@_sortedFiles.Count</span></button>
-                            <button type="button" aria-pressed="@(_cat == "img")" @onclick='() => SetCat("img")'>Зображення <span class="cv-seg__n">@imgs</span></button>
-                            <button type="button" aria-pressed="@(_cat == "doc")" @onclick='() => SetCat("doc")'>Документи <span class="cv-seg__n">@docs</span></button>
+                            <button type="button" aria-pressed="@(_cat == "all" ? "true" : "false")" @onclick='() => SetCat("all")'>Усі <span class="cv-seg__n">@_sortedFiles.Count</span></button>
+                            <button type="button" aria-pressed="@(_cat == "img" ? "true" : "false")" @onclick='() => SetCat("img")'>Зображення <span class="cv-seg__n">@imgs</span></button>
+                            <button type="button" aria-pressed="@(_cat == "doc" ? "true" : "false")" @onclick='() => SetCat("doc")'>Документи <span class="cv-seg__n">@docs</span></button>
                         </div>
                     }
                     <span class="cv-controls__spacer"></span>
                     <div class="cv-seg cv-seg--icons" role="group" aria-label="Вигляд">
-                        <button type="button" aria-pressed="@(Prefs.View == ViewMode.Grid)" @onclick="() => Prefs.View = ViewMode.Grid" aria-label="Плитка"><MudIcon Icon="@Icons.Material.Outlined.GridView" Size="Size.Small" /></button>
-                        <button type="button" aria-pressed="@(Prefs.View == ViewMode.List)" @onclick="() => Prefs.View = ViewMode.List" aria-label="Список"><MudIcon Icon="@Icons.Material.Outlined.ViewList" Size="Size.Small" /></button>
+                        <button type="button" aria-pressed="@(Prefs.View == ViewMode.Grid ? "true" : "false")" @onclick="() => Prefs.View = ViewMode.Grid" aria-label="Плитка"><MudIcon Icon="@Icons.Material.Outlined.GridView" Size="Size.Small" /></button>
+                        <button type="button" aria-pressed="@(Prefs.View == ViewMode.List ? "true" : "false")" @onclick="() => Prefs.View = ViewMode.List" aria-label="Список"><MudIcon Icon="@Icons.Material.Outlined.ViewList" Size="Size.Small" /></button>
                     </div>
                 }
             </div>
@@ -128,19 +128,44 @@
             @if (dirs.Count > 0)
             {
                 <section class="cv-section" aria-label="Підпапки">
-                    <h2 class="cv-section__title">Підпапки <span class="cv-mono">@dirs.Count</span></h2>
-                    <div class="cv-dirs">
-                        @foreach (var d in dirs)
-                        {
-                            <div class="cv-dir" @key="d.Id">
-                                <a class="cv-dir__link" href="folder/@Path/@d.Id" title="@d.Name">
-                                    <span class="cv-dir__icon"><MudIcon Icon="@Icons.Material.Filled.Folder" /></span>
-                                    <span class="cv-dir__name">@d.Name</span>
-                                </a>
-                                <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, d.Id)" OnClick="() => AddSubfolderAsync(d)" Size="Size.Small" />
-                            </div>
-                        }
-                    </div>
+                    <h2 class="cv-section__title cv-section__title--tools">
+                        <span>Підпапки <span class="cv-mono">@dirs.Count</span></span>
+                        <div class="cv-seg cv-seg--icons" role="group" aria-label="Вигляд підпапок">
+                            <button type="button" aria-pressed="@(Prefs.FolderView == ViewMode.Grid ? "true" : "false")" @onclick="() => Prefs.FolderView = ViewMode.Grid" aria-label="Підпапки плиткою" title="Плитка"><MudIcon Icon="@Icons.Material.Outlined.GridView" Size="Size.Small" /></button>
+                            <button type="button" aria-pressed="@(Prefs.FolderView == ViewMode.List ? "true" : "false")" @onclick="() => Prefs.FolderView = ViewMode.List" aria-label="Підпапки списком" title="Список"><MudIcon Icon="@Icons.Material.Outlined.ViewList" Size="Size.Small" /></button>
+                        </div>
+                    </h2>
+                    @if (Prefs.FolderView == ViewMode.Grid)
+                    {
+                        <div class="cv-dirs">
+                            @foreach (var d in dirs)
+                            {
+                                <div class="cv-dir" @key="d.Id">
+                                    <a class="cv-dir__link" href="folder/@Path/@d.Id" title="@d.Name">
+                                        <span class="cv-dir__icon"><MudIcon Icon="@Icons.Material.Filled.Folder" /></span>
+                                        <span class="cv-dir__name">@d.Name</span>
+                                    </a>
+                                    <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, d.Id)" OnClick="() => AddSubfolderAsync(d)" Size="Size.Small" />
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="cv-dlist">
+                            @foreach (var d in dirs)
+                            {
+                                <div class="cv-drow" @key="d.Id">
+                                    <a class="cv-drow__link" href="folder/@Path/@d.Id" title="@d.Name">
+                                        <span class="cv-dir__icon"><MudIcon Icon="@Icons.Material.Filled.Folder" /></span>
+                                        <span class="cv-drow__name">@d.Name</span>
+                                        @if (d.ModifiedUtc is { } modified) { <span class="cv-drow__date cv-mono">@Ua.Date(modified)</span> }
+                                    </a>
+                                    <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, d.Id)" OnClick="() => AddSubfolderAsync(d)" Size="Size.Small" />
+                                </div>
+                            }
+                        </div>
+                    }
                 </section>
             }
 
