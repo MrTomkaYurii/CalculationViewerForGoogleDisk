@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using CalculationViewer.Models;
 
 namespace CalculationViewer.Services.Local;
@@ -11,7 +12,11 @@ namespace CalculationViewer.Services.Local;
 /// </summary>
 internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer) : IFolderCatalog
 {
-    sealed record SeedDto(string Id, string Title, string? DescriptionFile, int? Year = null);
+    sealed record SeedDto(
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("title")] string Title,
+        [property: JsonPropertyName("descriptionFile")] string? DescriptionFile = null,
+        [property: JsonPropertyName("year")] int? Year = null);
     sealed record RootDto(string Id, string Name, DateTime ModifiedUtc);
 
     readonly SemaphoreSlim _gate = new(1, 1);
@@ -30,19 +35,32 @@ internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer)
 
             try
             {
-                var seeds = await app.GetFromJsonAsync<List<SeedDto>>("data/folders.json", ct) ?? [];
+                using var req = new HttpRequestMessage(HttpMethod.Get, $"data/folders.json?v={DateTime.UtcNow.Ticks}");
+                req.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true, NoStore = true };
+                using var resp = await app.SendAsync(req, ct);
+                resp.EnsureSuccessStatusCode();
+                var seeds = await resp.Content.ReadFromJsonAsync<List<SeedDto>>(cancellationToken: ct) ?? [];
                 foreach (var s in seeds)
                 {
                     var description = "";
                     if (!string.IsNullOrWhiteSpace(s.DescriptionFile))
                     {
-                        try { description = await app.GetStringAsync($"data/{s.DescriptionFile}", ct); }
+                        try
+                        {
+                            using var descReq = new HttpRequestMessage(HttpMethod.Get, $"data/{s.DescriptionFile}?v={DateTime.UtcNow.Ticks}");
+                            descReq.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true, NoStore = true };
+                            using var descResp = await app.SendAsync(descReq, ct);
+                            if (descResp.IsSuccessStatusCode)
+                            {
+                                description = await descResp.Content.ReadAsStringAsync(ct);
+                            }
+                        }
                         catch (HttpRequestException e) { Console.WriteLine($"[SeededFolderCatalog] Не вдалося прочитати опис {s.DescriptionFile}: {e.Message}"); }
                     }
                     list.Add(new CatalogFolder { Id = s.Id, Title = s.Title, Description = description, Year = s.Year });
                 }
             }
-            catch (HttpRequestException e)
+            catch (Exception e)
             {
                 Console.WriteLine($"[SeededFolderCatalog] Не вдалося прочитати data/folders.json: {e.Message}");
                 if (devServer is null) throw new DriveAccessException("Список папок тимчасово недоступний. Спробуйте пізніше.");

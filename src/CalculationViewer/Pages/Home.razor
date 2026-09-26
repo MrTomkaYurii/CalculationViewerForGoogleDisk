@@ -46,7 +46,10 @@
         @foreach (var group in GroupedFiltered)
         {
             <div class="cv-year-divider" role="separator" aria-label="@group.Key">
-                <span class="cv-year-divider__badge">@group.Key</span>
+                <span class="cv-year-divider__badge">
+                    <MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Size="Size.Small" Style="font-size:17px;color:var(--cv-primary)" />
+                    <span>@group.Key</span>
+                </span>
             </div>
             <div class="cv-legend">
                 @foreach (var f in group)
@@ -86,14 +89,18 @@
 
     // Розподіл папок за роками
     IEnumerable<IGrouping<string, CatalogFolder>> GroupedFiltered => Filtered
-        .GroupBy(f => f.Year.HasValue ? $"{f.Year} рік" : ExtractYear(f.Title))
-        .OrderByDescending(g => g.Key.StartsWith("20") ? g.Key : "");
+        .GroupBy(GetFolderYearLabel)
+        .OrderByDescending(g => GetYearNumber(g.Key));
 
-    static string ExtractYear(string title)
+    static string GetFolderYearLabel(CatalogFolder f)
     {
-        var m = System.Text.RegularExpressions.Regex.Match(title, @"\b(20\d\d)\b");
+        if (f.Year.HasValue) return $"{f.Year} рік";
+        var m = System.Text.RegularExpressions.Regex.Match(f.Title, @"\b(20\d\d)\b");
         return m.Success ? $"{m.Groups[1].Value} рік" : "Інші розрахунки";
     }
+
+    static int GetYearNumber(string key) =>
+        int.TryParse(System.Text.RegularExpressions.Regex.Match(key, @"\b(20\d\d)\b").Value, out var y) ? y : 0;
 
     protected override async Task OnInitializedAsync()
     {

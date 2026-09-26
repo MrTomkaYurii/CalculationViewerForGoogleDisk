@@ -135,29 +135,35 @@ h1, h2, h3 { text-wrap: balance; }
 .cv-year-divider {
     display: flex;
     align-items: center;
+    justify-content: center;
     text-align: center;
-    margin: 36px 0 18px;
+    margin: 40px 0 20px;
     gap: 16px;
+    width: 100%;
 }
 .cv-year-divider:first-of-type {
-    margin-top: 12px;
+    margin-top: 14px;
 }
 .cv-year-divider::before,
 .cv-year-divider::after {
     content: "";
-    flex: 1;
+    flex: 1 1 0;
     border-bottom: 2px solid var(--cv-line-strong);
 }
 .cv-year-divider__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-size: 15px;
     font-weight: 600;
     letter-spacing: .02em;
     color: var(--mud-palette-text-primary);
-    padding: 4px 16px;
+    padding: 6px 18px;
     background: var(--cv-surface);
     border: 1px solid var(--cv-line);
     border-radius: 999px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    white-space: nowrap;
 }
 
 /* Головна: кожна папка це блок з назвою, кнопкою і повним описом («легендою»). */
