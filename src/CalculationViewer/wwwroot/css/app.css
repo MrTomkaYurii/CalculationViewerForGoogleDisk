@@ -200,8 +200,8 @@ h1, h2, h3 { text-wrap: balance; }
 @media (pointer: coarse) { .cv-trow { min-height: 36px; } .cv-tchev { width: 28px; height: 32px; } .cv-tlink { padding-block: 6px; } }
 
 /* ---------- Папка: шлях ---------- */
-.cv-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; margin: 0 0 12px; font-size: 14px; color: var(--cv-muted); min-width: 0; }
-.cv-crumb { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 8px; max-width: 260px; min-height: 32px; }
+.cv-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; margin: 0 0 4px; font-size: 14px; color: var(--cv-muted); min-width: 0; }
+.cv-crumb { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 8px; max-width: 260px; min-height: 28px; }
 .cv-crumb > span:not(.cv-crumb__icon) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 a.cv-crumb:hover { background: var(--cv-sunken); color: var(--mud-palette-text-primary); }
 .cv-crumb.is-current { color: var(--mud-palette-text-primary); font-weight: 600; }
@@ -209,24 +209,16 @@ a.cv-crumb:hover { background: var(--cv-sunken); color: var(--mud-palette-text-p
 .cv-sep .mud-icon-root { font-size: 16px; }
 .cv-crumbs .mud-menu .mud-button-root { min-width: 0; padding: 2px 8px; color: var(--cv-muted); }
 
-/* ---------- Папка: заголовок, «штамп», опис ---------- */
-.cv-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.cv-head__main { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
-.cv-title { margin: 0; font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -.02em; overflow-wrap: anywhere; }
+/* ---------- Папка: заголовок з лічильниками в одному рядку ---------- */
+.cv-page--folder.mud-container { padding-top: 12px; }
+.cv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.cv-head__main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cv-head__text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 14px; min-width: 0; }
+.cv-title { margin: 0; font-size: 24px; font-weight: 600; line-height: 1.25; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.cv-head__stats { font-size: 13px; color: var(--cv-muted); font-variant-numeric: tabular-nums; }
 .cv-treebtn { margin-left: -8px; }
 @media (min-width: 960px) { .cv-treebtn { display: none !important; } }
-@media (max-width: 599.98px) { .cv-title { font-size: 22px; } .cv-intro h1 { font-size: 26px; } }
-
-.cv-stamp { display: flex; flex-wrap: wrap; width: fit-content; max-width: 100%; margin: 14px 0 16px; border: 1px solid var(--cv-line-strong); border-radius: 10px; overflow: hidden; background: var(--cv-surface); }
-.cv-stamp__cell { padding: 7px 16px 8px; border-right: 1px solid var(--cv-line); min-width: 96px; }
-.cv-stamp__cell:last-child { border-right: 0; }
-.cv-stamp__label { font: 500 10.5px/1.2 var(--cv-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--cv-muted); }
-.cv-stamp__value { margin-top: 2px; font: 500 17px/1.3 var(--cv-mono); font-variant-numeric: tabular-nums; }
-@media (max-width: 599.98px) {
-    .cv-stamp { width: 100%; }
-    .cv-stamp__cell { flex: 1 1 33%; min-width: 0; padding: 6px 12px; border-bottom: 1px solid var(--cv-line); }
-}
-
+@media (max-width: 599.98px) { .cv-title { font-size: 20px; } .cv-intro h1 { font-size: 26px; } }
 
 .cv-md { font-size: 15px; line-height: 1.6; }
 .cv-md h2, .cv-md h3, .cv-md h4 { margin: .2em 0 .5em; font-weight: 600; line-height: 1.3; }
@@ -240,19 +232,29 @@ a.cv-crumb:hover { background: var(--cv-sunken); color: var(--mud-palette-text-p
 .cv-md th, .cv-md td { border: 1px solid var(--cv-line); padding: 6px 12px; }
 
 /* ---------- Папка: керування ---------- */
-.cv-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 20px; }
-.cv-controls .cv-search { flex: 1 1 260px; max-width: 380px; }
+.cv-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 16px; }
+.cv-controls .cv-search { flex: 1 1 240px; max-width: 340px; }
+/* Поле пошуку нижче за стандартне «dense» MudBlazor: 40px → 36px. */
+.cv-controls .cv-search .mud-input-slot.mud-input-root-outlined { padding-block: 8.5px; }
 .cv-controls__spacer { flex: 1; }
 .cv-seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--cv-sunken); border-radius: 10px; }
 .cv-seg button {
-    display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border: 0; border-radius: 8px;
+    display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border: 0; border-radius: 8px;
     background: none; color: var(--cv-muted); font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;
 }
 .cv-seg button:hover { color: var(--mud-palette-text-primary); }
 .cv-seg button[aria-pressed="true"] { background: var(--cv-surface); color: var(--mud-palette-text-primary); box-shadow: 0 1px 2px rgba(20, 33, 43, .12); }
 .cv-seg .cv-seg__n { font: 400 12px var(--cv-mono); color: var(--cv-muted); }
 .cv-seg--icons button { padding: 0 9px; }
-@media (max-width: 599.98px) { .cv-seg--filters { max-width: 100%; overflow-x: auto; scrollbar-width: none; } }
+@media (pointer: coarse) { .cv-seg button { min-height: 34px; } }
+@media (max-width: 599.98px) {
+    /* Телефон: у першому рядку пошук і перемикач вигляду, під ними фільтр за типом на всю ширину. */
+    .cv-controls .cv-search { flex: 1 1 0; min-width: 0; max-width: none; }
+    .cv-controls__spacer { display: none; }
+    .cv-controls .cv-seg--icons { order: 1; }
+    .cv-seg--filters { order: 2; flex: 1 0 100%; overflow-x: auto; scrollbar-width: none; }
+    .cv-seg--filters button { flex: 1; justify-content: center; padding: 0 6px; gap: 4px; font-size: 13px; }
+}
 
 .cv-section { margin: 0 0 28px; }
 .cv-section__title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--cv-muted); }

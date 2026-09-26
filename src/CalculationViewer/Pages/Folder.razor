@@ -23,14 +23,17 @@
     </MudDrawer>
 }
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="cv-page">
+<MudContainer MaxWidth="MaxWidth.Large" Class="cv-page cv-page--folder">
     @if (_path.Count > 0) { <DeepCrumbs Path="_path" /> }
 
     <div class="cv-head">
         <div class="cv-head__main">
             <MudIconButton Icon="@Icons.Material.Outlined.AccountTree" Class="cv-treebtn" OnClick="() => _treeOpen = !_treeOpen" aria-label="Дерево папок" />
-            @if (Title is not null) { <h1 class="cv-title">@Title</h1> }
-            else { <div class="cv-skel" style="height:34px;width:min(420px,70vw)"></div> }
+            <div class="cv-head__text">
+                @if (Title is not null) { <h1 class="cv-title">@Title</h1> }
+                else { <div class="cv-skel" style="height:30px;width:min(420px,70vw)"></div> }
+                @if (StatsLine is { Length: > 0 } stats && !_loading && _error is null) { <span class="cv-head__stats" role="status">@stats</span> }
+            </div>
         </div>
         @if (Title is not null && _listing is not null)
         {
@@ -71,13 +74,6 @@
         var imgs = _sortedFiles.Count(f => f.IsImage);
         var docs = _sortedFiles.Count - imgs;
         var hasMain = _listing.Folders.Count + _sortedFiles.Count > 0;
-
-        <div class="cv-stamp" role="group" aria-label="Вміст папки">
-            <div class="cv-stamp__cell"><div class="cv-stamp__label">Підпапок</div><div class="cv-stamp__value">@Ua.Num(_listing.Folders.Count)</div></div>
-            @if (imgs > 0) { <div class="cv-stamp__cell"><div class="cv-stamp__label">Зображень</div><div class="cv-stamp__value">@Ua.Num(imgs)</div></div> }
-            @if (docs > 0) { <div class="cv-stamp__cell"><div class="cv-stamp__label">Документів</div><div class="cv-stamp__value">@Ua.Num(docs)</div></div> }
-            @if (_technical.Count > 0) { <div class="cv-stamp__cell"><div class="cv-stamp__label">Службових</div><div class="cv-stamp__value">@Ua.Num(_technical.Count)</div></div> }
-        </div>
 
         @if (!hasMain && _technical.Count == 0)
         {
@@ -267,6 +263,22 @@
     CancellationTokenSource? _cts;
 
     string? Title => _root?.Title is { } t && _root.Id == FolderId ? t : _listing?.Folder.Name ?? _path.LastOrDefault()?.Name;
+
+    /// <summary>Що лежить у папці, одним рядком під назвою: «5 підпапок · 23 зображення». Нулі не показуємо.</summary>
+    string StatsLine
+    {
+        get
+        {
+            if (_listing is null) return "";
+            var imgs = _sortedFiles.Count(f => f.IsImage);
+            var parts = new List<string>(4);
+            if (_listing.Folders.Count > 0) parts.Add(Ua.Subfolders(_listing.Folders.Count));
+            if (imgs > 0) parts.Add(Ua.Images(imgs));
+            if (_sortedFiles.Count - imgs > 0) parts.Add(Ua.Documents(_sortedFiles.Count - imgs));
+            if (_technical.Count > 0) parts.Add(Ua.Count(_technical.Count, "службовий", "службові", "службових"));
+            return string.Join(" · ", parts);
+        }
+    }
 
     IReadOnlyList<DriveFolder> VisibleFolders => _cat != "all" ? [] : _sortedFolders.Where(Matches).ToList();
 
