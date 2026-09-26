@@ -18,11 +18,10 @@
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <div class="cv-splash">
+            <span class="cv-gear" style="--gear-size:72px" role="status" aria-label="Завантаження"></span>
+            <div class="loading-progress-text"></div>
+        </div>
     </div>
 
     <div id="blazor-error-ui">
@@ -30,6 +29,7 @@
         <a href="." class="reload">Перезавантажити</a>
         <span class="dismiss">🗙</span>
     </div>
+    <script src="js/media-loading.js"></script>
     <script src="js/hover-preview.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>

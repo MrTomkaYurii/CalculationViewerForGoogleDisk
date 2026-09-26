@@ -189,8 +189,19 @@ export function attach(root, dotnet) {
     root.focus({ preventScroll: true });
     apply();
 
+    // Поки велика картинка вантажиться, у переглядачі крутиться шестерня (клас is-loading на сцені).
+    function watchImage() {
+        const i = img();
+        if (!i || (i.complete && i.naturalWidth)) { stage.classList.remove('is-loading'); return; }
+        stage.classList.add('is-loading');
+        const done = () => stage.classList.remove('is-loading');
+        i.addEventListener('load', done, { once: true });
+        i.addEventListener('error', done, { once: true });
+    }
+
     return {
         reset,
+        watchImage,
         revealCurrent() {
             const cur = root.querySelector('.cv-strip__item.is-current');
             if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'center' });

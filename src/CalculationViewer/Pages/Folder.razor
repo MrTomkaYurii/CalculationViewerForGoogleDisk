@@ -40,7 +40,7 @@
 
     @if (_loading)
     {
-        <div class="cv-stamp" style="margin-top:14px"><div class="cv-stamp__cell"><div class="cv-stamp__label">Завантаження</div><div class="cv-stamp__value">…</div></div></div>
+        <LoadingNote Text="Завантажуємо вміст папки…" />
         <div class="cv-dirs" aria-busy="true">
             @for (var i = 0; i < 6; i++) { <div class="cv-skel" style="height:52px"></div> }
         </div>
@@ -50,12 +50,22 @@
     }
     else if (_error is not null)
     {
-        <StateBox IsError="true" Icon="@Icons.Material.Outlined.LockOpen" Title="Не вдалося відкрити папку" Text="@_error">
-            <Actions>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => LoadAsync()">Спробувати ще раз</MudButton>
-                <MudButton Variant="Variant.Outlined" Href="">До списку папок</MudButton>
-            </Actions>
-        </StateBox>
+        @Description
+        @if (_notConnected)
+        {
+            <StateBox Icon="@Icons.Material.Outlined.CloudQueue" Title="Файли ще не підключено" Text="@_error">
+                <Actions><MudButton Variant="Variant.Outlined" Href="">До списку папок</MudButton></Actions>
+            </StateBox>
+        }
+        else
+        {
+            <StateBox IsError="true" Icon="@Icons.Material.Outlined.LockOpen" Title="Не вдалося відкрити папку" Text="@_error">
+                <Actions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => LoadAsync()">Спробувати ще раз</MudButton>
+                    <MudButton Variant="Variant.Outlined" Href="">До списку папок</MudButton>
+                </Actions>
+            </StateBox>
+        }
     }
     else if (_listing is not null)
     {
@@ -70,15 +80,7 @@
             @if (_technical.Count > 0) { <div class="cv-stamp__cell"><div class="cv-stamp__label">Службових</div><div class="cv-stamp__value">@Ua.Num(_technical.Count)</div></div> }
         </div>
 
-        @if (_root is not null && _root.Id == FolderId && !string.IsNullOrWhiteSpace(_root.Description))
-        {
-            <section class="cv-desc @(_descOpen ? "is-open" : "")" aria-label="Опис папки">
-                <div class="cv-desc__body"><MarkdownView Source="@_root.Description" /></div>
-                <button type="button" class="cv-desc__toggle" @onclick="() => _descOpen = !_descOpen" aria-expanded="@_descOpen.ToString().ToLowerInvariant()">
-                    @(_descOpen ? "Згорнути опис" : "Показати опис повністю")
-                </button>
-            </section>
-        }
+        @Description
 
         @if (!hasMain && _technical.Count == 0)
         {
@@ -230,7 +232,20 @@
     /// <summary>Файли без перегляду (.mat та подібні): дані для розрахунків, окремий згорнутий список.</summary>
     IReadOnlyList<DriveFile> _technical = [];
     IReadOnlyList<DriveFolder> _sortedFolders = [];
-    bool _loading = true, _treeOpen, _descOpen, _techOpen;
+    bool _loading = true, _treeOpen, _descOpen, _techOpen, _notConnected;
+
+    /// <summary>Опис папки (Markdown). Показується і над вмістом, і тоді, коли вміст ще недоступний.</summary>
+    RenderFragment Description => @<text>
+        @if (_root is not null && _root.Id == FolderId && !string.IsNullOrWhiteSpace(_root.Description))
+        {
+            <section class="cv-desc @(_descOpen ? "is-open" : "")" aria-label="Опис папки">
+                <div class="cv-desc__body"><MarkdownView Source="@_root.Description" /></div>
+                <button type="button" class="cv-desc__toggle" @onclick="() => _descOpen = !_descOpen" aria-expanded="@_descOpen.ToString().ToLowerInvariant()">
+                    @(_descOpen ? "Згорнути опис" : "Показати опис повністю")
+                </button>
+            </section>
+        }
+    </text>;
     string? _error;
     string _query = "", _cat = "all";
     int _shown = PageSize, _techShown = PageSize;
@@ -269,12 +284,22 @@
         var cts = _cts = new CancellationTokenSource();
         _loading = true;
         _error = null;
+        _notConnected = false;
         _listing = null;
         StateHasChanged();
         try
         {
             var path = await Drive.GetPathAsync(FolderId, cts.Token);
-            if (path.Count == 0) throw new DriveAccessException("Папку не знайдено.");
+            if (path.Count == 0)
+            {
+                // Папка є в каталозі, але джерело файлів її не знає (Google Drive ще не підключений).
+                // Лишаємо на сторінці назву й опис, а замість файлів пояснюємо, чому їх немає.
+                _root = await Catalog.FindAsync(FolderId, cts.Token);
+                if (_root is null) throw new DriveAccessException("Папку не знайдено.");
+                _path = [new PathSegment(_root.Id, _root.Title)];
+                _notConnected = true;
+                throw new DriveAccessException("Перегляд файлів із Google Drive буде підключено найближчим часом.");
+            }
             _path = path;
             _root = await Catalog.FindAsync(path[0].Id, cts.Token);
             var listing = await Drive.GetListingAsync(FolderId, cts.Token);

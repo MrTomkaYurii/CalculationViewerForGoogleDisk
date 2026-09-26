@@ -21,6 +21,32 @@
     --cv-star: var(--mud-palette-secondary);
 }
 
+/* Шестерня, що крутиться: єдиний індикатор завантаження. Форма береться з маски, колір з currentColor. */
+:root {
+    --cv-gear-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z'/%3E%3C/svg%3E");
+}
+.cv-gear {
+    display: inline-block; flex: none; width: var(--gear-size, 28px); height: var(--gear-size, 28px);
+    color: var(--cv-primary, #2557d6); background: currentColor;
+    -webkit-mask: var(--cv-gear-mask) center / contain no-repeat; mask: var(--cv-gear-mask) center / contain no-repeat;
+    animation: cv-gear-spin 1.8s linear infinite;
+}
+@keyframes cv-gear-spin { to { transform: rotate(360deg); } }
+.cv-loading { display: flex; align-items: center; gap: 10px; margin: 6px 0 16px; color: var(--cv-muted); font-size: 14px; }
+
+/* Мініатюри: поки картинка вантажиться, у клітинці крутиться маленька шестерня. js/media-loading.js позначає завантажені <img> класом is-loaded. */
+.cv-frow__thumb, .cv-citem__thumb { position: relative; }
+.cv-file__thumb:has(img:not(.is-loaded))::before,
+.cv-frow__thumb:has(img:not(.is-loaded))::before,
+.cv-citem__thumb:has(img:not(.is-loaded))::before {
+    content: ""; position: absolute; left: 50%; top: 50%; width: var(--tg, 30px); height: var(--tg, 30px);
+    margin: calc(var(--tg, 30px) / -2) 0 0 calc(var(--tg, 30px) / -2);
+    background: var(--cv-muted); opacity: .6;
+    -webkit-mask: var(--cv-gear-mask) center / contain no-repeat; mask: var(--cv-gear-mask) center / contain no-repeat;
+    animation: cv-gear-spin 1.8s linear infinite;
+}
+.cv-frow__thumb, .cv-citem__thumb { --tg: 18px; }
+
 html, body { height: 100%; }
 body {
     margin: 0;
@@ -311,6 +337,12 @@ a.cv-crumb:hover { background: var(--cv-sunken); color: var(--mud-palette-text-p
 .cv-viewer__stage.is-zoomed { cursor: grab; }
 .cv-viewer__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform-origin: 50% 50%; user-select: none; -webkit-user-drag: none; will-change: transform; }
 .cv-viewer__frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+/* Шестерня поверх сцени, поки вантажиться зображення. Стара картинка (якщо була) притемнюється. */
+.cv-viewer__spin { position: absolute; inset: 0; display: none; place-items: center; pointer-events: none; z-index: 1; }
+.cv-viewer__spin .cv-gear { color: #8aa9ff; }
+.cv-viewer__stage.is-loading .cv-viewer__spin { display: grid; }
+.cv-viewer__stage.is-loading .cv-viewer__img { opacity: .3; }
+.cv-nopreview .cv-gear { color: #8aa9ff; }
 .cv-viewer__nav {
     position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 48px; height: 48px; border-radius: 50%;
     background: rgba(11, 18, 24, .55); color: #fff; opacity: 0; transition: opacity .15s;
@@ -469,12 +501,13 @@ a.cv-crumb:hover { background: var(--cv-sunken); color: var(--mud-palette-text-p
 #blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: .75rem; top: .5rem; }
 .blazor-error-boundary { background: #b32121; padding: 1rem; color: #fff; border-radius: 12px; }
 .blazor-error-boundary::after { content: "Сталася помилка."; }
-.loading-progress { position: absolute; display: block; width: 8rem; height: 8rem; inset: 20vh 0 auto 0; margin: 0 auto; }
-.loading-progress circle { fill: none; stroke: #dbe3e8; stroke-width: .6rem; transform-origin: 50% 50%; transform: rotate(-90deg); }
-.loading-progress circle:last-child { stroke: #2557d6; stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * .8), 500%; transition: stroke-dasharray .05s ease-in-out; }
-.loading-progress-text { position: absolute; text-align: center; font-weight: 600; inset: calc(20vh + 3.25rem) 0 auto .2rem; font-family: var(--cv-font); color: #4a5b69; }
+/* Стартовий екран, поки завантажується Blazor: шестерня й відсотки (Blazor сам підставляє --blazor-load-percentage-text). */
+.cv-splash { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 16px; }
+.loading-progress-text { font-weight: 600; font-family: var(--cv-font); color: #4a5b69; }
 .loading-progress-text::after { content: var(--blazor-load-percentage-text, "Завантаження"); }
 
 @media (prefers-reduced-motion: reduce) {
     * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    /* Індикатор завантаження лишається, але крутиться повільніше. */
+    .cv-gear, .cv-file__thumb::before, .cv-frow__thumb::before, .cv-citem__thumb::before { animation-duration: 3.6s !important; }
 }

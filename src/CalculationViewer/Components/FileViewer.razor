@@ -46,12 +46,12 @@
                 <div class="cv-docx" @ref="_docx" aria-label="@_file.Name"></div>
                 @if (_docxLoading)
                 {
-                    <div class="cv-nopreview"><MudProgressCircular Indeterminate="true" /></div>
+                    <div class="cv-nopreview"><GearSpinner Size="56" Label="Завантажуємо файл" /><p>Завантажуємо файл…</p></div>
                 }
             }
             else if (_textLoading)
             {
-                <div class="cv-nopreview"><MudProgressCircular Indeterminate="true" /></div>
+                <div class="cv-nopreview"><GearSpinner Size="56" Label="Завантажуємо файл" /><p>Завантажуємо файл…</p></div>
             }
             else if (_text is not null)
             {
@@ -76,6 +76,7 @@
                     </div>
                 </div>
             }
+            <div class="cv-viewer__spin" aria-hidden="true"><GearSpinner Size="56" Label="Завантажуємо зображення" /></div>
             <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Class="cv-viewer__nav cv-viewer__nav--prev" Disabled="@(_index <= 0)" OnClick="() => GoAsync(-1)" aria-label="Попередній (←)" />
             <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Class="cv-viewer__nav cv-viewer__nav--next" Disabled="@(_index >= Files.Count - 1)" OnClick="() => GoAsync(1)" aria-label="Наступний (→)" />
         </div>
@@ -206,6 +207,7 @@
         {
             _needsReveal = false;
             await _controller.InvokeVoidAsync("revealCurrent");
+            await _controller.InvokeVoidAsync("watchImage");
         }
 
         // .docx: якщо iframe-перегляду немає (локальне джерело), малюємо документ у браузері.

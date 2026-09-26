@@ -41,7 +41,7 @@
 | Інтерфейс | Що робить | Зараз (розробка) | У продакшені |
 |---|---|---|---|
 | `IDriveBrowser` | Вміст папки, шлях, файли, мініатюри, перегляд | `LocalDriveBrowser` через `DevDriveServer` | Google Drive API v3 |
-| `IFolderCatalog` | Підключені папки, назви, описи, порядок | `LocalFolderCatalog` (у пам'яті) | Firestore |
+| `IFolderCatalog` | Підключені папки, назви, описи, порядок | `SeededFolderCatalog`: файли `wwwroot/data`, правки адміна в пам'яті | Firestore |
 | `ICollectionStore` | Добірки закладок | `MemoryCollectionStore` (у пам'яті) | Firestore |
 | `IAdminSession` | Вхід адміністратора | `DevAdminSession` (заглушка) | Firebase Authentication (Google) |
 
@@ -61,7 +61,7 @@
 | Шрифти | IBM Plex Sans і IBM Plex Mono (Google Fonts, є кирилиця) |
 | Далі | Firebase Authentication, Firestore, Google Drive API, GitHub Pages |
 
-JavaScript мінімальний і використовується лише там, де без нього не обійтись: жести зуму й рендер `.docx` (`viewer.js`) та наведення на картинку (`hover-preview.js`). Уся бізнес-логіка на C#.
+JavaScript мінімальний і використовується лише там, де без нього не обійтись: жести зуму й рендер `.docx` (`viewer.js`), наведення на картинку (`hover-preview.js`) і позначка завантажених мініатюр (`media-loading.js`). Уся бізнес-логіка на C#.
 
 ---
 
@@ -91,9 +91,11 @@ CalculationViewerForGoogleDisk.slnx        рішення (два проєкти
 │   │   └── Local/                         реалізації для розробки
 │   └── wwwroot/
 │       ├── index.html, appsettings.json
+│       ├── data/                          підключені папки: folders.json і описи *.md
 │       ├── css/app.css                    стилі поверх MudBlazor (префікс cv-)
 │       ├── js/viewer.js                   зум, панорама, жести, клавіатура, рендер .docx
 │       ├── js/hover-preview.js            предпросмотр картинки при наведенні
+│       ├── js/media-loading.js            позначає завантажені мініатюри (для шестерні)
 │       └── lib/                           docx-preview, jszip
 └── tools/DevDriveServer/                  локальна заміна Google Drive (лише для розробки)
 ```
@@ -110,6 +112,7 @@ CalculationViewerForGoogleDisk.slnx        рішення (два проєкти
 - **Переглядач:** зум колесом і щипком, панорама, подвійний тап, свайп і стрілки між файлами, стрічка мініатюр, PDF у iframe, текст, `.docx` у браузері.
 - Файли без перегляду (`.mat` тощо) вважаються службовими: окремий згорнутий список унизу з кнопкою завантаження.
 - **Добірки:** зірочка на файлі чи папці, вибір або створення добірки, власна назва закладки. Добірки спільні для всіх відвідувачів.
+- Шестерня, що крутиться, показує будь-яке завантаження: старт застосунку, списки, дерево, мініатюри, переглядач.
 - Світла, темна або системна тема (зберігається в `localStorage`).
 
 **Адміністратор** (`tomka.yuriy@gmail.com`)
@@ -143,7 +146,18 @@ dotnet run --project tools/DevDriveServer -- "C:\August 2026-Results"
 dotnet run --project src/CalculationViewer --no-launch-profile --urls http://localhost:5292
 ```
 
-Відкрийте http://localhost:5292. «Підключені папки» на головній це підпапки верхнього рівня вибраної папки.
+Відкрийте http://localhost:5292.
+
+### Як підключити папку
+
+Поки Firestore не підключений, список папок задається файлами в `src/CalculationViewer/wwwroot/data/` (однаково локально й на GitHub Pages):
+
+1. У `folders.json` додайте запис: `id` папки Google Drive (частина посилання після `/folders/`), `title` і `descriptionFile`.
+2. Опис напишіть у Markdown у файлі поруч (наприклад `october.md`).
+3. Папка в Google Drive має бути відкрита для всіх, хто має посилання.
+4. Закомітьте й запуште: сайт оновиться сам.
+
+Папки з диска (DevDriveServer) у список за замовчуванням **не входять**. Щоб побачити їх під час розробки, у `wwwroot/appsettings.json` поставте `"IncludeLocalFolders": true`.
 
 > **Після зміни файлів у `wwwroot` (наприклад `.js`) проєкт треба зібрати заново.** Blazor звіряє хеш скриптів, підрахований під час збірки, і браузер блокує змінений файл. CSS і `.razor` цього не стосується.
 

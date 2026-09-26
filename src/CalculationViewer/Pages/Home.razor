@@ -22,6 +22,7 @@
 
     @if (_loading)
     {
+        <LoadingNote Text="Завантажуємо список папок…" />
         <div class="cv-cards" aria-busy="true">
             @for (var i = 0; i < 6; i++) { <div class="cv-skel" style="height:148px"></div> }
         </div>

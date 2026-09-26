@@ -1,0 +1,10 @@
+<div class="cv-loading" role="status">
+    <GearSpinner Size="@Size" Label="@Text" />
+    <span>@Text</span>
+</div>
+
+@code {
+    /// <summary>Шестерня з підписом над скелетонами: що саме зараз завантажується.</summary>
+    [Parameter, EditorRequired] public string Text { get; set; } = "Завантажуємо…";
+    [Parameter] public int Size { get; set; } = 26;
+}

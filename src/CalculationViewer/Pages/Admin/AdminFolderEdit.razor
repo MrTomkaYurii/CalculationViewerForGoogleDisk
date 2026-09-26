@@ -31,6 +31,7 @@ else
                     <MudTextField id="folder-link" @bind-Value="_link" Placeholder="https://drive.google.com/drive/folders/…" Variant="Variant.Outlined" Margin="Margin.Dense"
                                   Style="flex:1 1 320px" Immediate="true" OnKeyUp="OnLinkKey" />
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="CheckAsync" Disabled="@(_checking || string.IsNullOrWhiteSpace(_link))" Style="min-height:40px">
+                        @if (_checking) { <GearSpinner Size="18" Label="Перевіряємо" Class="me-2" /> }
                         @(_checking ? "Перевіряємо…" : "Перевірити доступ")
                     </MudButton>
                 </div>

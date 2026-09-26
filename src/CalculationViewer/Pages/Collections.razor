@@ -22,6 +22,7 @@
 
     @if (_all is null)
     {
+        <LoadingNote Text="Завантажуємо добірки…" />
         <div class="cv-cards" aria-busy="true">
             @for (var i = 0; i < 3; i++) { <div class="cv-skel" style="height:180px"></div> }
         </div>

@@ -20,7 +20,13 @@ builder.Services.AddMudServices(c =>
 // Джерело даних. Зараз: реальна папка через DevDriveServer. Далі: Google Drive API, Firestore, Firebase Auth.
 var driveServer = new Uri(builder.Configuration["DriveServer"] ?? "http://localhost:5199");
 builder.Services.AddSingleton<IDriveBrowser>(_ => new LocalDriveBrowser(new HttpClient { BaseAddress = driveServer }));
-builder.Services.AddSingleton<IFolderCatalog>(_ => new LocalFolderCatalog(new HttpClient { BaseAddress = driveServer }));
+// Список папок береться зі статичних файлів сайту (wwwroot/data). Папки з диска (DevDriveServer) за замовчуванням вимкнені:
+// щоб знову побачити їх у списку під час розробки, у wwwroot/appsettings.json поставте "IncludeLocalFolders": true.
+var appBase = new Uri(builder.HostEnvironment.BaseAddress);
+var includeLocalFolders = builder.HostEnvironment.IsDevelopment() && builder.Configuration.GetValue<bool>("IncludeLocalFolders");
+builder.Services.AddSingleton<IFolderCatalog>(_ => new SeededFolderCatalog(
+    new HttpClient { BaseAddress = appBase },
+    includeLocalFolders ? new HttpClient { BaseAddress = driveServer } : null));
 builder.Services.AddSingleton<ICollectionStore, MemoryCollectionStore>();
 builder.Services.AddSingleton<IAdminSession, DevAdminSession>();
 

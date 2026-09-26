@@ -1,0 +1,8 @@
+<span class="cv-gear @Class" style="--gear-size:@(Size)px" role="status" aria-label="@Label"></span>
+
+@code {
+    /// <summary>Шестерня, що крутиться: єдиний індикатор завантаження в застосунку.</summary>
+    [Parameter] public int Size { get; set; } = 28;
+    [Parameter] public string Label { get; set; } = "Завантаження";
+    [Parameter] public string? Class { get; set; }
+}
