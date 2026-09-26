@@ -43,25 +43,31 @@
     }
     else
     {
-        <div class="cv-legend">
-            @foreach (var f in Filtered)
-            {
-                <article class="cv-legend__item" @key="f.Id" aria-label="@f.Title">
-                    <header class="cv-legend__head">
-                        <span class="cv-legend__icon"><MudIcon Icon="@Icons.Material.Outlined.Folder" /></span>
-                        <div class="cv-legend__titles">
-                            <h2 class="cv-legend__title">@f.Title</h2>
-                            @if (f.UpdatedUtc is { } d) { <span class="cv-mono cv-muted">оновлено @Ua.Date(d)</span> }
-                        </div>
-                        <MudButton Href="@($"folder/{f.Id}")" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" Class="cv-legend__open">Відкрити папку</MudButton>
-                    </header>
-                    @if (!string.IsNullOrWhiteSpace(f.Description))
-                    {
-                        <div class="cv-legend__body"><MarkdownView Source="@f.Description" /></div>
-                    }
-                </article>
-            }
-        </div>
+        @foreach (var group in GroupedFiltered)
+        {
+            <div class="cv-year-divider" role="separator" aria-label="@group.Key">
+                <span class="cv-year-divider__badge">@group.Key</span>
+            </div>
+            <div class="cv-legend">
+                @foreach (var f in group)
+                {
+                    <article class="cv-legend__item" @key="f.Id" aria-label="@f.Title">
+                        <header class="cv-legend__head">
+                            <span class="cv-legend__icon"><MudIcon Icon="@Icons.Material.Outlined.Folder" /></span>
+                            <div class="cv-legend__titles">
+                                <h2 class="cv-legend__title">@f.Title</h2>
+                                @if (f.UpdatedUtc is { } d) { <span class="cv-mono cv-muted">оновлено @Ua.Date(d)</span> }
+                            </div>
+                            <MudButton Href="@($"folder/{f.Id}")" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" Class="cv-legend__open">Відкрити папку</MudButton>
+                        </header>
+                        @if (!string.IsNullOrWhiteSpace(f.Description))
+                        {
+                            <div class="cv-legend__body"><MarkdownView Source="@f.Description" /></div>
+                        }
+                    </article>
+                }
+            </div>
+        }
     }
 </MudContainer>
 
@@ -77,6 +83,17 @@
         .Where(f => string.IsNullOrWhiteSpace(_query)
                     || f.Title.Contains(_query.Trim(), StringComparison.CurrentCultureIgnoreCase)
                     || f.Description.Contains(_query.Trim(), StringComparison.CurrentCultureIgnoreCase));
+
+    // Розподіл папок за роками
+    IEnumerable<IGrouping<string, CatalogFolder>> GroupedFiltered => Filtered
+        .GroupBy(f => f.Year.HasValue ? $"{f.Year} рік" : ExtractYear(f.Title))
+        .OrderByDescending(g => g.Key.StartsWith("20") ? g.Key : "");
+
+    static string ExtractYear(string title)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(title, @"\b(20\d\d)\b");
+        return m.Success ? $"{m.Groups[1].Value} рік" : "Інші розрахунки";
+    }
 
     protected override async Task OnInitializedAsync()
     {

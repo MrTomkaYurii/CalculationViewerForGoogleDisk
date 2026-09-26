@@ -131,6 +131,35 @@ h1, h2, h3 { text-wrap: balance; }
 .cv-toolbar .cv-search { flex: 1 1 280px; max-width: 420px; }
 .cv-cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 
+/* Розділювач років на головній: риска — рік — риска */
+.cv-year-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 36px 0 18px;
+    gap: 16px;
+}
+.cv-year-divider:first-of-type {
+    margin-top: 12px;
+}
+.cv-year-divider::before,
+.cv-year-divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 2px solid var(--cv-line-strong);
+}
+.cv-year-divider__badge {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--mud-palette-text-primary);
+    padding: 4px 16px;
+    background: var(--cv-surface);
+    border: 1px solid var(--cv-line);
+    border-radius: 999px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
 /* Головна: кожна папка це блок з назвою, кнопкою і повним описом («легендою»). */
 .cv-legend { display: flex; flex-direction: column; gap: 20px; }
 .cv-legend__item { background: var(--cv-surface); border: 1px solid var(--cv-line); border-radius: var(--cv-radius-lg); padding: 16px 22px 8px; }

@@ -3,18 +3,56 @@
     "id": "1cbF8UWCrWgA-P_roZEvGZEXWhXaB-wSB",
     "title": "Вересень 2026",
     "driveUrl": "https://drive.google.com/drive/folders/1cbF8UWCrWgA-P_roZEvGZEXWhXaB-wSB?usp=sharing",
-    "descriptionFile": "september.md"
+    "descriptionFile": "september.md",
+    "year": 2026
   },
   {
     "id": "1GscW-aluYfFOQWeh4v8Hdet3KnK4lei4",
     "title": "Серпень 2026",
     "driveUrl": "https://drive.google.com/drive/folders/1GscW-aluYfFOQWeh4v8Hdet3KnK4lei4?usp=sharing",
-    "descriptionFile": "august.md"
+    "descriptionFile": "august.md",
+    "year": 2026
   },
   {
     "id": "1zB-id5s0zsGqlqHnFez0liZJ4fCPYXNa",
     "title": "Липень 2026",
     "driveUrl": "https://drive.google.com/drive/folders/1zB-id5s0zsGqlqHnFez0liZJ4fCPYXNa?usp=sharing",
-    "descriptionFile": "july.md"
+    "descriptionFile": "july.md",
+    "year": 2026
+  },
+  {
+    "id": "1iKb3HrNeENn5W9kDk5sIOIHbqUFUk6TC",
+    "title": "Моделювання 2026 — 3D візуалізація через концепцію вокселів",
+    "driveUrl": "https://drive.google.com/drive/folders/1iKb3HrNeENn5W9kDk5sIOIHbqUFUk6TC?usp=sharing",
+    "descriptionFile": "modelling-2026.md",
+    "year": 2026
+  },
+  {
+    "id": "1aFcSrcV-XhGtfN0Ic1DnHX-31d_XTsRF",
+    "title": "Моделювання 2025 — Двоточкові поляризаційні параметри",
+    "driveUrl": "https://drive.google.com/drive/folders/1aFcSrcV-XhGtfN0Ic1DnHX-31d_XTsRF?usp=sharing",
+    "descriptionFile": "modelling-2025.md",
+    "year": 2025
+  },
+  {
+    "id": "1ZxXEWVf_1C3YuwyiYAvDFzDvXXB9V6jX",
+    "title": "Розрахунки — Багатошарові БТ (зразки Горський)",
+    "driveUrl": "https://drive.google.com/drive/folders/1ZxXEWVf_1C3YuwyiYAvDFzDvXXB9V6jX?usp=sharing",
+    "descriptionFile": "calculations-multilayer.md",
+    "year": 2025
+  },
+  {
+    "id": "1-OyG3RrwuFoec8dbCO-QcuOuL-Dj50dp",
+    "title": "Розрахунки 2024 — Спектрально-кореляційний та вейвлет-аналіз",
+    "driveUrl": "https://drive.google.com/drive/folders/1-OyG3RrwuFoec8dbCO-QcuOuL-Dj50dp?usp=sharing",
+    "descriptionFile": "calculations-2024.md",
+    "year": 2024
+  },
+  {
+    "id": "1KN5dLt8pfsJZQ-UJ27gFNyKID6Kt74Nv",
+    "title": "Розрахунки — Детальна аналітика БТ",
+    "driveUrl": "https://drive.google.com/drive/folders/1KN5dLt8pfsJZQ-UJ27gFNyKID6Kt74Nv?usp=sharing",
+    "descriptionFile": "calculations-bt-analytics.md",
+    "year": 2024
   }
 ]

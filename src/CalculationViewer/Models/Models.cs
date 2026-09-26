@@ -43,6 +43,7 @@ public sealed class CatalogFolder
     public required string Title { get; set; }
     public string Description { get; set; } = "";
     public DateTime? UpdatedUtc { get; set; }
+    public int? Year { get; set; }
 }
 
 public enum BookmarkKind { File, Folder }

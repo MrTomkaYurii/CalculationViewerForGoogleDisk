@@ -11,7 +11,7 @@ namespace CalculationViewer.Services.Local;
 /// </summary>
 internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer) : IFolderCatalog
 {
-    sealed record SeedDto(string Id, string Title, string? DescriptionFile);
+    sealed record SeedDto(string Id, string Title, string? DescriptionFile, int? Year = null);
     sealed record RootDto(string Id, string Name, DateTime ModifiedUtc);
 
     readonly SemaphoreSlim _gate = new(1, 1);
@@ -39,7 +39,7 @@ internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer)
                         try { description = await app.GetStringAsync($"data/{s.DescriptionFile}", ct); }
                         catch (HttpRequestException e) { Console.WriteLine($"[SeededFolderCatalog] Не вдалося прочитати опис {s.DescriptionFile}: {e.Message}"); }
                     }
-                    list.Add(new CatalogFolder { Id = s.Id, Title = s.Title, Description = description });
+                    list.Add(new CatalogFolder { Id = s.Id, Title = s.Title, Description = description, Year = s.Year });
                 }
             }
             catch (HttpRequestException e)
