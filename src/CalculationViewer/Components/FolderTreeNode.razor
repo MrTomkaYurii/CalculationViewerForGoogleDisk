@@ -6,7 +6,7 @@
                 @onclick="ToggleAsync" aria-label="@(_isOpen ? "Згорнути" : "Розгорнути")" tabindex="@(_hasChildren ? 0 : -1)">
             <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
         </button>
-        <a class="cv-tlink" href="folder/@Id" title="@Name">
+        <a class="cv-tlink" href="folder/@NodePath" title="@Name">
             <MudIcon Icon="@(Id == CurrentId ? Icons.Material.Filled.FolderOpen : Icons.Material.Outlined.Folder)" />
             <span>@Name</span>
         </a>
@@ -26,7 +26,7 @@
             <ul role="group">
                 @foreach (var c in _children)
                 {
-                    <FolderTreeNode @key="c.Id" Id="@c.Id" Name="@c.Name" CurrentId="@CurrentId" Open="Open" />
+                    <FolderTreeNode @key="c.Id" Id="@c.Id" Name="@c.Name" NodePath="@($"{NodePath}/{c.Id}")" CurrentId="@CurrentId" Open="Open" />
                 }
             </ul>
         }
@@ -36,6 +36,8 @@
 @code {
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter, EditorRequired] public string Name { get; set; } = "";
+    /// <summary>Шлях до цієї папки з id через «/» від підключеної папки: за ним відкривається сторінка.</summary>
+    [Parameter, EditorRequired] public string NodePath { get; set; } = "";
     [Parameter, EditorRequired] public string CurrentId { get; set; } = "";
     [Parameter, EditorRequired] public HashSet<string> Open { get; set; } = [];
 

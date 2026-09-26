@@ -32,28 +32,35 @@ public static class DialogExtensions
 /// <summary>Відкриває вікно «Додати в добірку» для файлу або папки.</summary>
 public sealed class BookmarkActions(IDialogService dialogs, IDriveBrowser drive)
 {
-    public async Task AddFileAsync(DriveFile file)
+    static string[] Chain(string folderPath) => folderPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+    /// <param name="folderPath">Шлях до папки файлу з id через «/», як в адресі сторінки.</param>
+    public async Task AddFileAsync(DriveFile file, string folderPath)
     {
         await ShowAsync(new CollectionItem
         {
             Kind = BookmarkKind.File,
             DriveId = file.Id,
             FolderId = file.FolderId,
+            FolderPath = folderPath,
             Title = file.Name,
             OriginalName = file.Name,
             FileKind = file.Kind,
-            Path = string.Join(" › ", (await drive.GetPathAsync(file.FolderId)).Select(s => s.Name)),
+            Path = string.Join(" › ", (await drive.GetPathAsync(Chain(folderPath))).Select(s => s.Name)),
         });
     }
 
-    public async Task AddFolderAsync(string folderId, string name)
+    /// <param name="folderPath">Шлях до самої папки з id через «/», як в адресі сторінки.</param>
+    public async Task AddFolderAsync(string folderPath, string name)
     {
-        var path = await drive.GetPathAsync(folderId);
+        var chain = Chain(folderPath);
+        var path = await drive.GetPathAsync(chain);
         await ShowAsync(new CollectionItem
         {
             Kind = BookmarkKind.Folder,
-            DriveId = folderId,
-            FolderId = folderId,
+            DriveId = chain[^1],
+            FolderId = chain[^1],
+            FolderPath = folderPath,
             Title = name,
             OriginalName = name,
             Path = string.Join(" › ", path.Take(Math.Max(0, path.Count - 1)).Select(s => s.Name)),

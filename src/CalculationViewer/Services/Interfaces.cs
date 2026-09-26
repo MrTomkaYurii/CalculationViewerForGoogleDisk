@@ -18,8 +18,12 @@ public interface IDriveBrowser
 {
     /// <exception cref="DriveAccessException">Папка закрита, не існує або джерело повернуло помилку.</exception>
     Task<DriveListing> GetListingAsync(string folderId, CancellationToken ct = default);
-    /// <summary>Шлях від підключеної папки до потрібної, включно з обома.</summary>
-    Task<IReadOnlyList<PathSegment>> GetPathAsync(string folderId, CancellationToken ct = default);
+    /// <summary>
+    /// Назви папок за ланцюжком id з адреси сторінки: від підключеної папки до поточної, включно з обома.
+    /// Порожній результат, якщо ланцюжок не починається з підключеної папки. Google Drive не віддає батьківську папку
+    /// анонімним запитам, тому шлях береться з адреси, а не з API.
+    /// </summary>
+    Task<IReadOnlyList<PathSegment>> GetPathAsync(IReadOnlyList<string> idChain, CancellationToken ct = default);
     Task<FolderCheckResult> CheckFolderAsync(string linkOrPath, CancellationToken ct = default);
 
     string GetThumbnailUrl(string fileId, int size = 400);

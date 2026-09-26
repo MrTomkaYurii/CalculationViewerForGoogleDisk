@@ -45,11 +45,13 @@ internal sealed class LocalDriveBrowser(HttpClient http) : IDriveBrowser
         return new DriveListing(folder, folders, files);
     }
 
-    public async Task<IReadOnlyList<PathSegment>> GetPathAsync(string folderId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PathSegment>> GetPathAsync(IReadOnlyList<string> idChain, CancellationToken ct = default)
     {
+        if (idChain.Count == 0) return [];
         try
         {
-            var list = await http.GetFromJsonAsync<List<SegmentDto>>($"api/path/{Uri.EscapeDataString(folderId)}", ct) ?? [];
+            // Локальний сервер сам знає повний шлях за останнім id (id тут це закодований відносний шлях).
+            var list = await http.GetFromJsonAsync<List<SegmentDto>>($"api/path/{Uri.EscapeDataString(idChain[^1])}", ct) ?? [];
             return list.Select(s => new PathSegment(s.Id, s.Name)).ToList();
         }
         catch (HttpRequestException)

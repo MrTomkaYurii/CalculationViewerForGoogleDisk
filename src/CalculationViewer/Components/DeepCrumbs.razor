@@ -12,9 +12,9 @@
             {
                 <span class="cv-sep"><MudIcon Icon="@Icons.Material.Filled.ChevronRight" /></span>
                 <MudMenu Label="…" Dense="true" Variant="Variant.Text" aria-label="Проміжні папки">
-                    @foreach (var hidden in Path.Skip(1).Take(Path.Count - 3))
+                    @for (var h = 1; h < Path.Count - 2; h++)
                     {
-                        <MudMenuItem Href="@($"folder/{hidden.Id}")">@hidden.Name</MudMenuItem>
+                        <MudMenuItem Href="@Href(h)">@Path[h].Name</MudMenuItem>
                     }
                 </MudMenu>
             }
@@ -27,7 +27,7 @@
         }
         else
         {
-            <a class="cv-crumb" href="folder/@seg.Id" title="@seg.Name"><span>@seg.Name</span></a>
+            <a class="cv-crumb" href="@Href(i)" title="@seg.Name"><span>@seg.Name</span></a>
         }
     }
 </nav>
@@ -39,4 +39,7 @@
     bool _collapse;
 
     protected override void OnParametersSet() => _collapse = Path.Count > 4;
+
+    /// <summary>Адреса сторінки папки на рівні index: шлях у ній це id усіх папок від підключеної до цієї.</summary>
+    string Href(int index) => "folder/" + string.Join('/', Path.Take(index + 1).Select(s => s.Id));
 }

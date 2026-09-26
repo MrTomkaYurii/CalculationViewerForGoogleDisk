@@ -54,15 +54,22 @@ public sealed class CollectionItem
     public required string DriveId { get; set; }
     /// <summary>Для файлу: папка, в якій він лежить. Для папки: вона сама.</summary>
     public required string FolderId { get; set; }
+    /// <summary>Шлях до папки з id через «/», від підключеної папки до потрібної. Сторінка папки відкривається саме за ним.</summary>
+    public string FolderPath { get; set; } = "";
     public required string Title { get; set; }
     public string OriginalName { get; set; } = "";
     public FileKind? FileKind { get; set; }
     /// <summary>Шлях текстом: «Розрахунки › 02 Схеми».</summary>
     public string Path { get; set; } = "";
 
-    public string Href => Kind == BookmarkKind.Folder
-        ? $"folder/{DriveId}"
-        : $"folder/{FolderId}?file={Uri.EscapeDataString(DriveId)}";
+    public string Href
+    {
+        get
+        {
+            var path = string.IsNullOrEmpty(FolderPath) ? FolderId : FolderPath;
+            return Kind == BookmarkKind.Folder ? $"folder/{path}" : $"folder/{path}?file={Uri.EscapeDataString(DriveId)}";
+        }
+    }
 }
 
 public sealed class BookmarkCollection

@@ -1,4 +1,4 @@
-@page "/folder/{FolderId}"
+@page "/folder/{*Path}"
 @implements IDisposable
 @inject IDriveBrowser Drive
 @inject IFolderCatalog Catalog
@@ -34,7 +34,7 @@
         </div>
         @if (Title is not null && _listing is not null)
         {
-            <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, FolderId)" OnClick="() => Bookmarks.AddFolderAsync(FolderId, Title)" />
+            <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, FolderId)" OnClick="() => Bookmarks.AddFolderAsync(Path, Title)" />
         }
     </div>
 
@@ -88,7 +88,7 @@
                 <Actions>
                     @if (_path.Count > 1)
                     {
-                        <MudButton Variant="Variant.Outlined" Href="@($"folder/{_path[^2].Id}")" StartIcon="@Icons.Material.Filled.ArrowUpward">На рівень вище</MudButton>
+                        <MudButton Variant="Variant.Outlined" Href="@ParentHref" StartIcon="@Icons.Material.Filled.ArrowUpward">На рівень вище</MudButton>
                     }
                 </Actions>
             </StateBox>
@@ -136,11 +136,11 @@
                         @foreach (var d in dirs)
                         {
                             <div class="cv-dir" @key="d.Id">
-                                <a class="cv-dir__link" href="folder/@d.Id" title="@d.Name">
+                                <a class="cv-dir__link" href="folder/@Path/@d.Id" title="@d.Name">
                                     <span class="cv-dir__icon"><MudIcon Icon="@Icons.Material.Filled.Folder" /></span>
                                     <span class="cv-dir__name">@d.Name</span>
                                 </a>
-                                <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, d.Id)" OnClick="() => Bookmarks.AddFolderAsync(d.Id, d.Name)" Size="Size.Small" />
+                                <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, d.Id)" OnClick="() => AddSubfolderAsync(d)" Size="Size.Small" />
                             </div>
                         }
                     </div>
@@ -156,7 +156,7 @@
                         <div class="cv-files">
                             @foreach (var f in files.Take(_shown))
                             {
-                                <FileTile @key="f.Id" File="f" Href="@FileHref(f)" Bookmarked="@Collections.IsBookmarked(BookmarkKind.File, f.Id)" OnStar="() => Bookmarks.AddFileAsync(f)" />
+                                <FileTile @key="f.Id" File="f" Href="@FileHref(f)" Bookmarked="@Collections.IsBookmarked(BookmarkKind.File, f.Id)" OnStar="() => Bookmarks.AddFileAsync(f, Path)" />
                             }
                         </div>
                     }
@@ -165,7 +165,7 @@
                         <div class="cv-flist">
                             @foreach (var f in files.Take(_shown))
                             {
-                                <FileRow @key="f.Id" File="f" Href="@FileHref(f)" Bookmarked="@Collections.IsBookmarked(BookmarkKind.File, f.Id)" OnStar="() => Bookmarks.AddFileAsync(f)" />
+                                <FileRow @key="f.Id" File="f" Href="@FileHref(f)" Bookmarked="@Collections.IsBookmarked(BookmarkKind.File, f.Id)" OnStar="() => Bookmarks.AddFileAsync(f, Path)" />
                             }
                         </div>
                     }
@@ -215,14 +215,19 @@
 
 @if (SelectedFile is not null && _listing is not null)
 {
-    <FileViewer Files="_sortedFiles" CurrentId="@SelectedFile" FolderId="@FolderId" />
+    <FileViewer Files="_sortedFiles" CurrentId="@SelectedFile" FolderPath="@Path" />
 }
 
 @code {
     const int PageSize = 60;
 
-    [Parameter] public string FolderId { get; set; } = "";
+    /// <summary>Шлях у адресі: id папок через «/», від підключеної папки до поточної. Path зберігається в адресі, бо Google Drive не віддає батька папки анонімним запитам.</summary>
+    [Parameter] public string Path { get; set; } = "";
     [SupplyParameterFromQuery(Name = "file")] public string? SelectedFile { get; set; }
+
+    string[] Chain => Path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+    string FolderId => Chain.LastOrDefault() ?? "";
+    string ParentHref => "folder/" + string.Join('/', _path.Take(Math.Max(1, _path.Count - 1)).Select(s => s.Id));
 
     IReadOnlyList<PathSegment> _path = [];
     CatalogFolder? _root;
@@ -268,8 +273,8 @@
 
     protected override void OnParametersSet()
     {
-        if (_loadedId == FolderId) return;
-        _loadedId = FolderId;
+        if (_loadedId == Path) return;
+        _loadedId = Path;
         _query = "";
         _cat = "all";
         _shown = PageSize;
@@ -289,12 +294,13 @@
         StateHasChanged();
         try
         {
-            var path = await Drive.GetPathAsync(FolderId, cts.Token);
+            var chain = Chain;
+            var path = chain.Length == 0 ? [] : await Drive.GetPathAsync(chain, cts.Token);
             if (path.Count == 0)
             {
-                // Папка є в каталозі, але джерело файлів її не знає (Google Drive ще не підключений).
+                // Підключена папка є в каталозі, але джерело файлів її не знає (Google Drive ще не підключений).
                 // Лишаємо на сторінці назву й опис, а замість файлів пояснюємо, чому їх немає.
-                _root = await Catalog.FindAsync(FolderId, cts.Token);
+                _root = chain.Length == 1 ? await Catalog.FindAsync(chain[0], cts.Token) : null;
                 if (_root is null) throw new DriveAccessException("Папку не знайдено.");
                 _path = [new PathSegment(_root.Id, _root.Title)];
                 _notConnected = true;
@@ -317,7 +323,9 @@
         StateHasChanged();
     }
 
-    string FileHref(DriveFile f) => $"folder/{FolderId}?file={Uri.EscapeDataString(f.Id)}";
+    string FileHref(DriveFile f) => $"folder/{Path}?file={Uri.EscapeDataString(f.Id)}";
+
+    Task AddSubfolderAsync(DriveFolder d) => Bookmarks.AddFolderAsync($"{Path}/{d.Id}", d.Name);
 
     void SetCat(string cat) { _cat = cat; _shown = PageSize; }
     void OnQueryChanged(string q) { _query = q; _shown = PageSize; }

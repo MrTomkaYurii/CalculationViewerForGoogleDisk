@@ -92,11 +92,10 @@ internal sealed partial class GoogleDriveBrowser(HttpClient http, string apiKey,
         if (!IdPattern().IsMatch(id)) throw new DriveAccessException("Папку не знайдено.");
         if (_meta.TryGetValue(id, out var known)) return new DriveFolder(id, known.Name, known.ParentId, null);
 
-        var f = await GetAsync<FileDto>($"files/{id}", "supportsAllDrives=true&fields=id,name,mimeType,parents,modifiedTime", ct);
+        var f = await GetAsync<FileDto>($"files/{id}", "supportsAllDrives=true&fields=id,name,mimeType,modifiedTime", ct);
         if (f.MimeType != FolderMime) throw new DriveAccessException("Це не папка.");
-        var parent = f.Parents?.FirstOrDefault();
-        _meta[id] = (f.Name, parent);
-        return new DriveFolder(id, f.Name, parent, f.ModifiedTime);
+        _meta[id] = (f.Name, null);
+        return new DriveFolder(id, f.Name, null, f.ModifiedTime);
     }
 
     public async Task<DriveListing> GetListingAsync(string folderId, CancellationToken ct = default)
@@ -154,31 +153,27 @@ internal sealed partial class GoogleDriveBrowser(HttpClient http, string apiKey,
 
     // ---------- шлях ----------
 
-    public async Task<IReadOnlyList<PathSegment>> GetPathAsync(string folderId, CancellationToken ct = default)
+    /// <summary>
+    /// Google Drive не віддає поле parents анонімним запитам, тому шлях збирається з адреси сторінки (ланцюжок id),
+    /// а від Drive потрібні лише назви папок. Перша ланка має бути підключеною папкою з каталогу, її назва береться з каталогу.
+    /// </summary>
+    public async Task<IReadOnlyList<PathSegment>> GetPathAsync(IReadOnlyList<string> idChain, CancellationToken ct = default)
     {
+        if (idChain.Count == 0) return [];
         var roots = (await catalog.GetAllAsync(ct)).ToDictionary(r => r.Id, r => r.Title);
-        var segments = new List<PathSegment>();
-        var current = folderId;
+        if (!roots.TryGetValue(idChain[0], out var rootTitle)) return [];
 
-        for (var depth = 0; depth < 30 && current is not null; depth++)
-        {
-            // Підключена папка завершує шлях і показується під назвою з каталогу.
-            if (roots.TryGetValue(current, out var title))
-            {
-                segments.Add(new PathSegment(current, title));
-                segments.Reverse();
-                return segments;
-            }
+        // Назви решти папок беруться паралельно; ті, що вже бачили у списках, повертаються з кешу без запитів.
+        string[] names;
+        try { names = await Task.WhenAll(idChain.Skip(1).Select(id => NameOfAsync(id, ct))); }
+        catch (DriveAccessException) { return []; }
 
-            DriveFolder meta;
-            try { meta = await GetFolderMetaAsync(current, ct); }
-            catch (DriveAccessException) { return []; }
-            segments.Add(new PathSegment(current, meta.Name));
-            current = meta.ParentId!;
-        }
-
-        return [];
+        var segments = new List<PathSegment>(idChain.Count) { new(idChain[0], rootTitle) };
+        for (var i = 1; i < idChain.Count; i++) segments.Add(new PathSegment(idChain[i], names[i - 1]));
+        return segments;
     }
+
+    async Task<string> NameOfAsync(string id, CancellationToken ct) => (await GetFolderMetaAsync(id, ct)).Name;
 
     // ---------- перевірка посилання (форма адміна) ----------
 

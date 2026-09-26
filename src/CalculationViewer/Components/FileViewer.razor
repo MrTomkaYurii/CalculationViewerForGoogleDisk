@@ -25,7 +25,7 @@
                     </div>
                 }
                 <MudIconButton Icon="@(_bookmarked ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
-                               Class="@($"cv-vbtn {(_bookmarked ? "is-on" : "")}")" OnClick="() => Bookmarks.AddFileAsync(_file)"
+                               Class="@($"cv-vbtn {(_bookmarked ? "is-on" : "")}")" OnClick="() => Bookmarks.AddFileAsync(_file, FolderPath)"
                                aria-label="Додати в добірку" />
                 <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew" Class="cv-vbtn" Href="@Drive.GetOpenUrl(_file.Id)" Target="_blank" aria-label="Відкрити в новій вкладці" />
                 <MudIconButton Icon="@Icons.Material.Outlined.Download" Class="cv-vbtn cv-viewer__hide-xs" Href="@Drive.GetDownloadUrl(_file.Id)" aria-label="Завантажити" />
@@ -128,7 +128,8 @@
     /// <summary>Файли папки в тому порядку, в якому їх бачить користувач.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<DriveFile> Files { get; set; } = [];
     [Parameter, EditorRequired] public string CurrentId { get; set; } = "";
-    [Parameter, EditorRequired] public string FolderId { get; set; } = "";
+    /// <summary>Шлях до папки з id через «/», як в адресі сторінки папки.</summary>
+    [Parameter, EditorRequired] public string FolderPath { get; set; } = "";
 
     ElementReference _root, _docx;
     DriveFile? _file;
@@ -237,7 +238,7 @@
 
     Task GoToAsync(DriveFile f)
     {
-        Nav.NavigateTo($"folder/{FolderId}?file={Uri.EscapeDataString(f.Id)}", replace: true);
+        Nav.NavigateTo($"folder/{FolderPath}?file={Uri.EscapeDataString(f.Id)}", replace: true);
         return Task.CompletedTask;
     }
 
@@ -250,7 +251,7 @@
 
     Task CloseAsync()
     {
-        Nav.NavigateTo($"folder/{FolderId}");
+        Nav.NavigateTo($"folder/{FolderPath}");
         return Task.CompletedTask;
     }
 
