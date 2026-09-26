@@ -133,21 +133,31 @@ h1, h2, h3 { text-wrap: balance; }
 
 /* Головна: кожна папка це блок з назвою, кнопкою і повним описом («легендою»). */
 .cv-legend { display: flex; flex-direction: column; gap: 20px; }
-.cv-legend__item { background: var(--cv-surface); border: 1px solid var(--cv-line); border-radius: var(--cv-radius-lg); padding: 22px 28px 10px; }
-.cv-legend__head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px dashed var(--cv-line-strong); }
-.cv-legend__icon { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border-radius: 12px; background: var(--cv-primary-soft); color: var(--cv-primary); }
-.cv-legend__titles { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.cv-legend__title { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.01em; line-height: 1.25; overflow-wrap: anywhere; }
-.cv-legend__titles .cv-mono { font-size: 12px; }
-.cv-legend__item:not(:has(.cv-legend__body)) .cv-legend__head { border-bottom: 0; margin-bottom: 0; padding-bottom: 12px; }
-/* На широкому екрані текст іде в дві колонки: короткі абзаци не розтягуються на весь блок. На вузькому лишається одна. */
-.cv-legend__body { columns: 2 27rem; column-gap: 48px; padding-bottom: 14px; }
+.cv-legend__item { background: var(--cv-surface); border: 1px solid var(--cv-line); border-radius: var(--cv-radius-lg); padding: 16px 22px 8px; }
+.cv-legend__head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px dashed var(--cv-line-strong); }
+.cv-legend__icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 11px; background: var(--cv-primary-soft); color: var(--cv-primary); }
+.cv-legend__titles { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cv-legend__title { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -.01em; line-height: 1.25; overflow-wrap: anywhere; }
+.cv-legend__titles .cv-mono { font-size: 11.5px; }
+.cv-legend__item:not(:has(.cv-legend__body)) .cv-legend__head { border-bottom: 0; margin-bottom: 0; padding-bottom: 10px; }
+
+/* Опис компактний: дві колонки (текст ліворуч, список «У папці» праворуч), дрібніший шрифт і щільніші рядки.
+   Друга колонка з'являється, щойно вміщаються дві колонки по ~22rem. На телефоні колонка одна. */
+.cv-legend__body { columns: 2 22rem; column-gap: 36px; padding-bottom: 8px; }
+.cv-legend__body .cv-md { font-size: 13px; line-height: 1.42; }
 .cv-legend__body .cv-md > :first-child { margin-top: 0; }
+.cv-legend__body .cv-md p { margin: .25em 0 .55em; }
+.cv-legend__body .cv-md ul, .cv-legend__body .cv-md ol { margin: .2em 0 .5em; padding-left: 1.15em; }
+.cv-legend__body .cv-md li { margin: .1em 0; }
+.cv-legend__body .cv-md h2, .cv-legend__body .cv-md h3 { margin: .1em 0 .3em; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--cv-muted); }
+.cv-legend__body .cv-md code { font-size: .92em; padding: 0 4px; }
 .cv-legend__body .cv-md p, .cv-legend__body .cv-md li { break-inside: avoid; }
 .cv-legend__body .cv-md h2, .cv-legend__body .cv-md h3 { break-after: avoid; }
+/* Розділ під заголовком (наприклад «У папці») завжди починається зверху другої колонки: у всіх блоках однаково. */
+.cv-legend__body .cv-md h2:not(:first-child) { break-before: column; margin-top: .1em; }
 @media (max-width: 599.98px) {
-    .cv-legend__item { padding: 16px 16px 6px; }
-    .cv-legend__title { font-size: 20px; }
+    .cv-legend__item { padding: 14px 14px 4px; }
+    .cv-legend__title { font-size: 18px; }
     .cv-legend__open { width: 100%; }
 }
 
