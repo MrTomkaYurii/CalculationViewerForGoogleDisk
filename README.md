@@ -40,7 +40,7 @@
 
 | Інтерфейс | Що робить | Зараз (розробка) | У продакшені |
 |---|---|---|---|
-| `IDriveBrowser` | Вміст папки, шлях, файли, мініатюри, перегляд | `LocalDriveBrowser` через `DevDriveServer` | Google Drive API v3 |
+| `IDriveBrowser` | Вміст папки, шлях, файли, мініатюри, перегляд | `GoogleDriveBrowser` (Drive API v3), якщо задано `GoogleApiKey`; інакше `LocalDriveBrowser` через `DevDriveServer` | Google Drive API v3 |
 | `IFolderCatalog` | Підключені папки, назви, описи, порядок | `SeededFolderCatalog`: файли `wwwroot/data`, правки адміна в пам'яті | Firestore |
 | `ICollectionStore` | Добірки закладок | `MemoryCollectionStore` (у пам'яті) | Firestore |
 | `IAdminSession` | Вхід адміністратора | `DevAdminSession` (заглушка) | Firebase Authentication (Google) |
@@ -147,6 +147,21 @@ dotnet run --project src/CalculationViewer --no-launch-profile --urls http://loc
 ```
 
 Відкрийте http://localhost:5292.
+
+### Ключ Google API (щоб читати файли з Drive)
+
+Без ключа папки з каталогу показують назву й опис, а замість файлів пояснення «Файли ще не підключено».
+
+1. https://console.cloud.google.com → створіть проєкт.
+2. **APIs & Services → Library → Google Drive API → Enable.**
+3. **APIs & Services → Credentials → Create credentials → API key.** Скопіюйте ключ (починається з `AIza`).
+4. У ключа натисніть **Edit** і задайте обмеження:
+   - **Application restrictions → Websites**, додайте `https://tomkayurii.pp.ua/*`, `http://tomkayurii.pp.ua/*` і `http://localhost:5292/*`;
+   - **API restrictions → Restrict key → Google Drive API**.
+5. **На сайт:** GitHub → Settings → Secrets and variables → Actions → New repository secret, ім'я `GOOGLE_API_KEY`, значення ключ. Наступний деплой підставить його в опублікований сайт (у репозиторій ключ не потрапляє).
+6. **Локально:** створіть `src/CalculationViewer/wwwroot/appsettings.Development.json` (у git не потрапляє) з `{ "GoogleApiKey": "ваш ключ" }`, збережіть і перезапустіть застосунок.
+
+Ключ у браузері видно всім, це властивість будь-якого клієнтського сайту. Захищає його саме обмеження за адресою сайту й лише на Drive API (пункт 4).
 
 ### Як підключити папку
 

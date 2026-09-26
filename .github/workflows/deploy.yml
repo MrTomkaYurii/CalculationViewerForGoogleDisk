@@ -58,6 +58,20 @@ jobs:
           cp release/wwwroot/index.html release/wwwroot/404.html
           touch release/wwwroot/.nojekyll
 
+      # Ключ Google API береться з секрету репозиторію GOOGLE_API_KEY і потрапляє лише в опублікований сайт, у код не комітиться.
+      # Без секрету сайт працює, але файли з Google Drive не завантажуються (папки покажуть пояснення).
+      - name: Inject Google API key
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          if [ -n "$GOOGLE_API_KEY" ]; then
+            sed -i "s|\"GoogleApiKey\": \"\"|\"GoogleApiKey\": \"${GOOGLE_API_KEY}\"|" release/wwwroot/appsettings.json
+            grep -q "\"GoogleApiKey\": \"${GOOGLE_API_KEY}\"" release/wwwroot/appsettings.json
+            echo "Ключ Google API підставлено."
+          else
+            echo "::warning::Секрет GOOGLE_API_KEY не задано: файли з Google Drive на сайті не завантажуватимуться."
+          fi
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:

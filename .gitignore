@@ -17,3 +17,6 @@ node_modules/
 # ОС
 Thumbs.db
 .DS_Store
+
+# Локальні налаштування з ключем Google API (ключ не комітимо)
+appsettings.Development.json

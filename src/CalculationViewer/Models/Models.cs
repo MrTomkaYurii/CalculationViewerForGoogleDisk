@@ -16,9 +16,17 @@ public static class FileKinds
 
 public sealed record DriveFolder(string Id, string Name, string? ParentId, DateTime? ModifiedUtc);
 
-public sealed record DriveFile(string Id, string Name, string FolderId, FileKind Kind, long SizeBytes, DateTime ModifiedUtc)
+public sealed record DriveFile(string Id, string Name, string FolderId, FileKind Kind, long SizeBytes, DateTime ModifiedUtc, string? MimeType = null)
 {
-    public string Extension => Name.Contains('.') ? Name[(Name.LastIndexOf('.') + 1)..].ToUpperInvariant() : "";
+    /// <summary>Розширення для значка: «PNG», «PDF». Документи Google без розширення отримують «GDOC», «GSHEET», «GSLIDES».</summary>
+    public string Extension => MimeType switch
+    {
+        "application/vnd.google-apps.document" => "GDOC",
+        "application/vnd.google-apps.spreadsheet" => "GSHEET",
+        "application/vnd.google-apps.presentation" => "GSLIDES",
+        _ => Name.Contains('.') ? Name[(Name.LastIndexOf('.') + 1)..].ToUpperInvariant() : "",
+    };
+
     public bool IsImage => Kind == FileKind.Image;
 }
 
