@@ -61,7 +61,24 @@
                                 <h2 class="cv-legend__title">@f.Title</h2>
                                 @if (f.UpdatedUtc is { } d) { <span class="cv-mono cv-muted">оновлено @Ua.Date(d)</span> }
                             </div>
-                            <MudButton Href="@($"folder/{f.Id}")" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" Class="cv-legend__open">Відкрити папку</MudButton>
+                            <div class="cv-legend__actions">
+                                <MudButton Href="@f.DriveUrl"
+                                           Target="_blank"
+                                           Rel="noopener noreferrer"
+                                           Variant="Variant.Outlined"
+                                           Color="Color.Default"
+                                           EndIcon="@Icons.Material.Outlined.OpenInNew"
+                                           Class="cv-legend__drive">
+                                    Відкрити на Google Диску
+                                </MudButton>
+                                <MudButton Href="@($"folder/{f.Id}")"
+                                           Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           EndIcon="@Icons.Material.Filled.ArrowForward"
+                                           Class="cv-legend__open">
+                                    Відкрити папку
+                                </MudButton>
+                            </div>
                         </header>
                         @if (!string.IsNullOrWhiteSpace(f.Description))
                         {

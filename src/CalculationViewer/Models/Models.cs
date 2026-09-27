@@ -44,6 +44,22 @@ public sealed class CatalogFolder
     public string Description { get; set; } = "";
     public DateTime? UpdatedUtc { get; set; }
     public int? Year { get; set; }
+    /// <summary>Пряме посилання на папку в Google Drive.</summary>
+    public string DriveUrl => DriveUrls.ForFolder(Id);
+}
+
+public static class DriveUrls
+{
+    public static string ForFolder(string? folderId)
+    {
+        if (string.IsNullOrWhiteSpace(folderId)) return "https://drive.google.com";
+        if (folderId.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            folderId.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return folderId;
+        }
+        return $"https://drive.google.com/drive/folders/{Uri.EscapeDataString(folderId)}";
+    }
 }
 
 public enum BookmarkKind { File, Folder }

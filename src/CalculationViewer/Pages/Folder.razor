@@ -35,10 +35,27 @@
                 @if (StatsLine is { Length: > 0 } stats && !_loading && _error is null) { <span class="cv-head__stats" role="status">@stats</span> }
             </div>
         </div>
-        @if (Title is not null && _listing is not null)
-        {
-            <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, FolderId)" OnClick="() => Bookmarks.AddFolderAsync(Path, Title)" />
-        }
+        <div style="display:flex;align-items:center;gap:8px">
+            @if (!string.IsNullOrWhiteSpace(FolderId))
+            {
+                <MudTooltip Text="Відкрити цю папку на Google Диску">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               Href="@DriveUrls.ForFolder(FolderId)"
+                               Target="_blank"
+                               Rel="noopener noreferrer"
+                               EndIcon="@Icons.Material.Outlined.OpenInNew"
+                               Style="text-transform:none;font-size:12.5px;white-space:nowrap;border-radius:10px">
+                        На Google Диску
+                    </MudButton>
+                </MudTooltip>
+            }
+            @if (Title is not null && _listing is not null)
+            {
+                <StarButton IsOn="@Collections.IsBookmarked(BookmarkKind.Folder, FolderId)" OnClick="() => Bookmarks.AddFolderAsync(Path, Title)" />
+            }
+        </div>
     </div>
 
     @if (_loading)

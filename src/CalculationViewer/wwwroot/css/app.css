@@ -176,6 +176,10 @@ h1, h2, h3 { text-wrap: balance; }
 .cv-legend__title { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -.01em; line-height: 1.25; overflow-wrap: anywhere; }
 .cv-legend__titles .cv-mono { font-size: 11.5px; }
 .cv-legend__item:not(:has(.cv-legend__body)) .cv-legend__head { border-bottom: 0; margin-bottom: 0; padding-bottom: 10px; }
+.cv-legend__actions { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+.cv-legend__drive { border-color: var(--cv-line-strong) !important; color: var(--mud-palette-text-primary) !important; font-weight: 500; white-space: nowrap; text-transform: none; transition: all 0.15s ease; }
+.cv-legend__drive:hover { background: var(--cv-sunken) !important; border-color: var(--cv-primary) !important; color: var(--cv-primary) !important; }
+.cv-legend__open { font-weight: 500; white-space: nowrap; text-transform: none; }
 
 /* Перемикач вкладок опису на мобільних пристроях */
 .cv-legend__tabs {
@@ -261,8 +265,8 @@ h1, h2, h3 { text-wrap: balance; }
 
 @media (max-width: 599.98px) {
     .cv-legend__item { padding: 14px 14px 4px; }
-    .cv-legend__title { font-size: 18px; }
-    .cv-legend__open { width: 100%; }
+    .cv-legend__actions { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-left: 0; }
+    .cv-legend__open, .cv-legend__drive { width: 100%; justify-content: center; }
     .cv-legend__tabs { width: 100%; display: flex; }
     .cv-ltab { flex: 1; justify-content: center; }
 }
