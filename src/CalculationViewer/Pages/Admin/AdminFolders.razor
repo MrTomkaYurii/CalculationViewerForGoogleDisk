@@ -12,6 +12,7 @@
         <p class="cv-muted" style="margin:4px 0 0">Відвідувачі бачать їх у цьому порядку. Файли лишаються в Google Drive, застосунок їх не копіює.</p>
     </div>
     <div class="cv-pagehead__actions">
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Outlined.RestartAlt" OnClick="ResetToDefaultsAsync">Скинути налаштування</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="admin/folders/new">Додати папку</MudButton>
     </div>
 </div>
@@ -49,6 +50,13 @@ else
                     <div class="cv-arow__sub">@f.Id</div>
                 </div>
                 <div class="cv-arow__status">
+                    @if (GetFolderYear(f) is { } yr)
+                    {
+                        <span class="cv-pill cv-pill--year" title="Рік розрахунків">
+                            <MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Size="Size.Small" Style="font-size:13.5px" />
+                            @yr рік
+                        </span>
+                    }
                     @if (string.IsNullOrWhiteSpace(f.Description)) { <span class="cv-pill cv-pill--neutral">Без опису</span> }
                     else { <span class="cv-pill cv-pill--good"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />Є опис</span> }
                 </div>
@@ -87,6 +95,20 @@ else
         if (!await Dialogs.ConfirmAsync("Прибрати папку зі списку?", $"«{f.Title}» зникне з сайту для відвідувачів. Файли в Google Drive не зміняться.", "Прибрати")) return;
         await Catalog.DeleteAsync(f.Id);
         Snackbar.Add("Папку прибрано зі списку", Severity.Normal);
+    }
+
+    async Task ResetToDefaultsAsync()
+    {
+        if (!await Dialogs.ConfirmAsync("Скинути налаштування папок?", "Список папок, їхні назви, роки та описи повернуться до початкового стану з файлу конфігурації сайту.", "Скинути")) return;
+        await Catalog.ResetAsync();
+        Snackbar.Add("Налаштування скинуто до початкових", Severity.Normal);
+    }
+
+    static int? GetFolderYear(CatalogFolder f)
+    {
+        if (f.Year.HasValue) return f.Year;
+        var m = System.Text.RegularExpressions.Regex.Match(f.Title, @"\b(\d{4})\b");
+        return m.Success && int.TryParse(m.Groups[1].Value, out var y) ? y : null;
     }
 
     void OnChanged() => _ = InvokeAsync(async () =>

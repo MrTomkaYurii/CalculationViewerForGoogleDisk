@@ -31,9 +31,10 @@ builder.Services.AddSingleton<IDriveBrowser>(sp => string.IsNullOrWhiteSpace(goo
 // щоб знову побачити їх у списку під час розробки, у wwwroot/appsettings.json поставте "IncludeLocalFolders": true.
 var appBase = new Uri(builder.HostEnvironment.BaseAddress);
 var includeLocalFolders = builder.HostEnvironment.IsDevelopment() && builder.Configuration.GetValue<bool>("IncludeLocalFolders");
-builder.Services.AddSingleton<IFolderCatalog>(_ => new SeededFolderCatalog(
+builder.Services.AddSingleton<IFolderCatalog>(sp => new SeededFolderCatalog(
     new HttpClient { BaseAddress = appBase },
-    includeLocalFolders ? new HttpClient { BaseAddress = driveServer } : null));
+    includeLocalFolders ? new HttpClient { BaseAddress = driveServer } : null,
+    sp.GetService<Microsoft.JSInterop.IJSRuntime>()));
 builder.Services.AddSingleton<ICollectionStore, MemoryCollectionStore>();
 builder.Services.AddSingleton<IAdminSession, DevAdminSession>();
 

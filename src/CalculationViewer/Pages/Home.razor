@@ -47,7 +47,7 @@
         {
             <div class="cv-year-divider" role="separator" aria-label="@group.Key">
                 <span class="cv-year-divider__badge">
-                    <MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Size="Size.Small" Style="font-size:17px;color:var(--cv-primary)" />
+                    <MudIcon Icon="@(GetYearNumber(group.Key) > 0 ? Icons.Material.Outlined.CalendarMonth : Icons.Material.Outlined.FolderSpecial)" Size="Size.Small" Style="font-size:17px;color:var(--cv-primary)" />
                     <span>@group.Key</span>
                 </span>
             </div>
@@ -94,13 +94,16 @@
 
     static string GetFolderYearLabel(CatalogFolder f)
     {
-        if (f.Year.HasValue) return $"{f.Year} рік";
-        var m = System.Text.RegularExpressions.Regex.Match(f.Title, @"\b(20\d\d)\b");
+        if (f.Year is { } y)
+        {
+            return y > 0 ? $"{y} рік" : "Інші розрахунки";
+        }
+        var m = System.Text.RegularExpressions.Regex.Match(f.Title, @"\b(\d{4})\b");
         return m.Success ? $"{m.Groups[1].Value} рік" : "Інші розрахунки";
     }
 
     static int GetYearNumber(string key) =>
-        int.TryParse(System.Text.RegularExpressions.Regex.Match(key, @"\b(20\d\d)\b").Value, out var y) ? y : 0;
+        int.TryParse(System.Text.RegularExpressions.Regex.Match(key, @"\b(\d{4})\b").Value, out var y) ? y : 0;
 
     protected override async Task OnInitializedAsync()
     {

@@ -63,6 +63,26 @@ else
         </div>
 
         <div class="cv-form__block">
+            <label class="cv-form__label" for="folder-year">Рік розрахунків</label>
+            <div class="cv-form__hint">Визначає, під яким горизонтальним розділювачем року (наприклад, 2026, 2025 або 2024 рік) папка відображатиметься на головній сторінці. Зміна року автоматично переміщує папку між відповідними лініями років.</div>
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                <MudNumericField T="int?" id="folder-year" @bind-Value="_year" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Min="1900" Max="2100" Step="1" Placeholder="наприклад, 2026"
+                                 Clearable="true" Style="max-width:180px" />
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <span class="cv-muted" style="font-size:12.5px">Швидкий вибір:</span>
+                    <MudButton Variant="@(_year == 2026 ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" Size="Size.Small" OnClick="() => _year = 2026" Style="text-transform:none">2026 рік</MudButton>
+                    <MudButton Variant="@(_year == 2025 ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" Size="Size.Small" OnClick="() => _year = 2025" Style="text-transform:none">2025 рік</MudButton>
+                    <MudButton Variant="@(_year == 2024 ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" Size="Size.Small" OnClick="() => _year = 2024" Style="text-transform:none">2024 рік</MudButton>
+                    @if (_year.HasValue)
+                    {
+                        <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small" OnClick="() => _year = null" Style="font-size:12px;text-transform:none">Очистити</MudButton>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="cv-form__block">
             <div class="cv-form__label">Опис розрахунків</div>
             <div class="cv-form__hint">Пишіть у Markdown: заголовки <code>##</code>, списки <code>-</code>, <strong>**жирний**</strong>, <code>`код`</code>. Опис показується над вмістом папки.</div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
@@ -103,6 +123,7 @@ else
     bool IsNew => Id is null;
     bool _notFound, _checking;
     string _link = "", _title = "", _description = "", _tab = "edit";
+    int? _year;
     FolderCheckResult? _check;
 
     bool CanSave => !string.IsNullOrWhiteSpace(_title) && (!IsNew || _check is { Status: FolderCheckStatus.Ok });
@@ -114,6 +135,12 @@ else
         if (f is null) { _notFound = true; return; }
         _title = f.Title;
         _description = f.Description;
+        _year = f.Year;
+        if (!_year.HasValue && !string.IsNullOrWhiteSpace(_title))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(_title, @"\b(\d{4})\b");
+            if (m.Success && int.TryParse(m.Groups[1].Value, out var y)) _year = y;
+        }
     }
 
     async Task CheckAsync()
@@ -123,7 +150,15 @@ else
         try
         {
             _check = await Drive.CheckFolderAsync(_link);
-            if (_check.Status == FolderCheckStatus.Ok && string.IsNullOrWhiteSpace(_title)) _title = _check.Name ?? "";
+            if (_check.Status == FolderCheckStatus.Ok)
+            {
+                if (string.IsNullOrWhiteSpace(_title)) _title = _check.Name ?? "";
+                if (!_year.HasValue && !string.IsNullOrWhiteSpace(_title))
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(_title, @"\b(\d{4})\b");
+                    if (m.Success && int.TryParse(m.Groups[1].Value, out var y)) _year = y;
+                }
+            }
         }
         finally { _checking = false; }
     }
@@ -152,7 +187,13 @@ else
     async Task SaveAsync()
     {
         var id = IsNew ? _check!.DriveId! : Id!;
-        await Catalog.SaveAsync(new CatalogFolder { Id = id, Title = _title.Trim(), Description = _description });
+        await Catalog.SaveAsync(new CatalogFolder
+        {
+            Id = id,
+            Title = _title.Trim(),
+            Description = _description,
+            Year = _year
+        });
         Snackbar.Add("Збережено", Severity.Success);
         Nav.NavigateTo("admin/folders");
     }

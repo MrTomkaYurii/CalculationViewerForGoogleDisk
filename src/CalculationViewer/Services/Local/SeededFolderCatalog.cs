@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.JSInterop;
 using CalculationViewer.Models;
 
 namespace CalculationViewer.Services.Local;
@@ -10,7 +11,7 @@ namespace CalculationViewer.Services.Local;
 /// Так список однаковий локально й на GitHub Pages. У режимі розробки до нього додаються папки з диска через DevDriveServer.
 /// Зміни адміністратора в інтерфейсі живуть у пам'яті до перезавантаження. У продакшені їх зберігатиме Firestore.
 /// </summary>
-internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer) : IFolderCatalog
+internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer, IJSRuntime? js = null) : IFolderCatalog
 {
     sealed record SeedDto(
         [property: JsonPropertyName("id")] string Id,
@@ -31,6 +32,22 @@ internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer)
         try
         {
             if (_folders is not null) return _folders;
+
+            // Спроба відновити зміни адміністратора з localStorage браузера
+            List<CatalogFolder>? saved = null;
+            if (js is not null)
+            {
+                try
+                {
+                    var savedJson = await js.InvokeAsync<string?>("localStorage.getItem", "cv_custom_catalog");
+                    if (!string.IsNullOrWhiteSpace(savedJson))
+                    {
+                        saved = System.Text.Json.JsonSerializer.Deserialize<List<CatalogFolder>>(savedJson);
+                    }
+                }
+                catch { /* Ігноруємо відсутність localStorage під час первинного рендерингу */ }
+            }
+
             var list = new List<CatalogFolder>();
 
             try
@@ -63,7 +80,20 @@ internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer)
             catch (Exception e)
             {
                 Console.WriteLine($"[SeededFolderCatalog] Не вдалося прочитати data/folders.json: {e.Message}");
-                if (devServer is null) throw new DriveAccessException("Список папок тимчасово недоступний. Спробуйте пізніше.");
+                if (devServer is null && saved is null) throw new DriveAccessException("Список папок тимчасово недоступний. Спробуйте пізніше.");
+            }
+
+            if (saved is { Count: > 0 })
+            {
+                // Якщо в folders.json з'явилися нові папки, додаємо їх до збереженого списку
+                foreach (var seedItem in list)
+                {
+                    if (saved.All(f => f.Id != seedItem.Id))
+                    {
+                        saved.Add(seedItem);
+                    }
+                }
+                return _folders = saved;
             }
 
             if (devServer is not null)
@@ -99,12 +129,14 @@ internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer)
         var i = list.FindIndex(f => f.Id == folder.Id);
         folder.UpdatedUtc = DateTime.UtcNow;
         if (i >= 0) list[i] = folder; else list.Add(folder);
+        await PersistAsync();
         Changed?.Invoke();
     }
 
     public async Task DeleteAsync(string id, CancellationToken ct = default)
     {
         (await LoadAsync(ct)).RemoveAll(f => f.Id == id);
+        await PersistAsync();
         Changed?.Invoke();
     }
 
@@ -115,6 +147,43 @@ internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer)
         var j = i + delta;
         if (i < 0 || j < 0 || j >= list.Count) return;
         (list[i], list[j]) = (list[j], list[i]);
+        await PersistAsync();
         Changed?.Invoke();
+    }
+
+    public async Task ResetAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            _folders = null;
+            if (js is not null)
+            {
+                try
+                {
+                    await js.InvokeVoidAsync("localStorage.removeItem", "cv_custom_catalog");
+                }
+                catch { }
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+        Changed?.Invoke();
+    }
+
+    async Task PersistAsync()
+    {
+        if (js is null || _folders is null) return;
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(_folders);
+            await js.InvokeVoidAsync("localStorage.setItem", "cv_custom_catalog", json);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SeededFolderCatalog] Не вдалося зберегти в localStorage: {ex.Message}");
+        }
     }
 }

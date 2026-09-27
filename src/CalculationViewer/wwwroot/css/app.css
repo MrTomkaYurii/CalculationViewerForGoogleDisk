@@ -600,6 +600,7 @@ a.cv-crumb:hover { background: var(--cv-sunken); color: var(--mud-palette-text-p
 .cv-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 500; }
 .cv-pill--good { background: color-mix(in srgb, var(--mud-palette-success) 15%, transparent); color: var(--mud-palette-success); }
 .cv-pill--neutral { background: var(--cv-sunken); color: var(--cv-muted); }
+.cv-pill--year { background: color-mix(in srgb, var(--cv-primary) 12%, transparent); color: var(--cv-primary); font-weight: 600; border: 1px solid color-mix(in srgb, var(--cv-primary) 28%, transparent); }
 @media (max-width: 759.98px) {
     .cv-arow { grid-template-columns: 40px minmax(0, 1fr) auto; }
     .cv-arow__status, .cv-arow__desc { display: none; }

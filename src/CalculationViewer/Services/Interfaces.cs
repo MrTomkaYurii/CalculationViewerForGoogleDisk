@@ -11,6 +11,7 @@ public interface IFolderCatalog
     Task SaveAsync(CatalogFolder folder, CancellationToken ct = default);
     Task DeleteAsync(string id, CancellationToken ct = default);
     Task MoveAsync(string id, int delta, CancellationToken ct = default);
+    Task ResetAsync(CancellationToken ct = default);
 }
 
 /// <summary>Читання вмісту публічних папок. Реальна реалізація: Google Drive API v3 з API-ключем.</summary>
