@@ -3,6 +3,7 @@
 @implements IDisposable
 @inject IAdminSession Admin
 @inject NavigationManager Nav
+@inject IVisitorTracker VisitorTracker
 
 <PageTitle>Адміністрування · Розрахунки</PageTitle>
 
@@ -33,6 +34,13 @@
         <nav class="cv-tabs" aria-label="Розділи адміністрування">
             <a href="admin/folders" class="@(_tab == "folders" ? "is-active" : "")">Папки</a>
             <a href="admin/collections" class="@(_tab == "collections" ? "is-active" : "")">Добірки</a>
+            <a href="admin/visitors" class="@(_tab == "visitors" ? "is-active" : "")">
+                Відвідувачі (IP)
+                @if (_visitorCount > 0)
+                {
+                    <span class="cv-count" style="margin-left:6px">@_visitorCount</span>
+                }
+            </a>
         </nav>
         @Body
     }
@@ -41,13 +49,32 @@
 @code {
     bool _signingIn;
     string _tab = "folders";
+    int _visitorCount;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         Admin.Changed += OnChanged;
         Nav.LocationChanged += OnLocation;
+        VisitorTracker.Changed += OnVisitorTrackerChanged;
         UpdateTab();
+        await UpdateVisitorCountAsync();
     }
+
+    async Task UpdateVisitorCountAsync()
+    {
+        try
+        {
+            var logs = await VisitorTracker.GetLogsAsync();
+            _visitorCount = logs.Count;
+        }
+        catch { }
+    }
+
+    void OnVisitorTrackerChanged() => _ = InvokeAsync(async () =>
+    {
+        await UpdateVisitorCountAsync();
+        StateHasChanged();
+    });
 
     async Task SignInAsync()
     {
@@ -56,7 +83,16 @@
         _signingIn = false;
     }
 
-    void UpdateTab() => _tab = Nav.ToBaseRelativePath(Nav.Uri).StartsWith("admin/collections") ? "collections" : "folders";
+    void UpdateTab()
+    {
+        var rel = Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0];
+        if (rel.StartsWith("admin/visitors", StringComparison.OrdinalIgnoreCase))
+            _tab = "visitors";
+        else if (rel.StartsWith("admin/collections", StringComparison.OrdinalIgnoreCase))
+            _tab = "collections";
+        else
+            _tab = "folders";
+    }
 
     void OnChanged() => _ = InvokeAsync(StateHasChanged);
 
@@ -70,5 +106,6 @@
     {
         Admin.Changed -= OnChanged;
         Nav.LocationChanged -= OnLocation;
+        VisitorTracker.Changed -= OnVisitorTrackerChanged;
     }
 }

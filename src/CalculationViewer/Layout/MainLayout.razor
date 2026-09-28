@@ -3,6 +3,7 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject ICollectionStore Collections
+@inject IVisitorTracker VisitorTracker
 
 <MudThemeProvider @ref="_provider" Theme="_theme" @bind-IsDarkMode="_isDark" />
 <MudPopoverProvider />
@@ -81,6 +82,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+        _ = VisitorTracker.TrackVisitAsync(Nav.Uri);
         try
         {
             var saved = await JS.InvokeAsync<string?>("localStorage.getItem", "cv-theme");
@@ -119,6 +121,7 @@
     {
         UpdateSection();
         StateHasChanged();
+        _ = VisitorTracker.TrackVisitAsync(e.Location);
     }
 
     void OnCollectionsChanged() => _ = InvokeAsync(async () =>

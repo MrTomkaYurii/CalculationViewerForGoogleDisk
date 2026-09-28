@@ -1,0 +1,261 @@
+@page "/admin/visitors"
+@layout AdminLayout
+@implements IDisposable
+@inject IVisitorTracker Tracker
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Відвідувачі · Адміністрування</PageTitle>
+
+<div class="cv-pagehead">
+    <div>
+        <h2 style="margin:0;font-size:20px;font-weight:600">Журнал відвідувачів</h2>
+        <p class="cv-muted" style="margin:4px 0 0">
+            IP-адреси та країни користувачів, які заходили на сервіс, із часом візиту та сторінками.
+        </p>
+    </div>
+    <div class="cv-pagehead__actions">
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Outlined.Refresh"
+                   OnClick="LoadAsync" Disabled="_loading">
+            Оновити
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Outlined.DeleteSweep"
+                   OnClick="ClearLogsAsync" Disabled="@(_logs is null || _logs.Count == 0 || _loading)">
+            Очистити журнал
+        </MudButton>
+    </div>
+</div>
+
+@if (_loading && _logs is null)
+{
+    <div class="cv-skel" style="height:220px"></div>
+}
+else if (_logs is null || _logs.Count == 0)
+{
+    <StateBox Icon="@Icons.Material.Outlined.HistoryToggleOff"
+              Title="Журнал відвідувачів порожній"
+              Text="Тут з'являтимуться IP-адреси та країни користувачів, які переглядають сайт.">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Refresh" OnClick="LoadAsync">
+                Оновити дані
+            </MudButton>
+        </Actions>
+    </StateBox>
+}
+else
+{
+    <!-- Картки статистики -->
+    <div class="cv-vstats">
+        <div class="cv-vstat">
+            <span class="cv-vstat__val">@_logs.Count</span>
+            <span class="cv-vstat__lbl">Всього візитів</span>
+        </div>
+        <div class="cv-vstat">
+            <span class="cv-vstat__val">@_logs.Select(x => x.Ip).Distinct().Count()</span>
+            <span class="cv-vstat__lbl">Унікальних IP</span>
+        </div>
+        <div class="cv-vstat">
+            <span class="cv-vstat__val">@_logs.Select(x => x.CountryDisplayName).Distinct().Count()</span>
+            <span class="cv-vstat__lbl">Країн</span>
+        </div>
+        <div class="cv-vstat">
+            <span class="cv-vstat__val" style="font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                @(_logs.FirstOrDefault() is { } last ? Ua.RelativeTime(last.TimestampUtc) : "—")
+            </span>
+            <span class="cv-vstat__lbl">Останній візит</span>
+        </div>
+    </div>
+
+    <!-- Пошук та фільтри -->
+    <div class="cv-vfilters">
+        <MudTextField @bind-Value="_search" Placeholder="Пошук за IP, країною, містом чи сторінкою..."
+                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Immediate="true" Clearable="true" Class="cv-search" aria-label="Пошук відвідувачів" />
+
+        <div class="cv-vchips">
+            <button type="button" class="cv-ltab @(_filter == "all" ? "is-active" : "")" @onclick="@(() => _filter = "all")">
+                Усі (@_logs.Count)
+            </button>
+            <button type="button" class="cv-ltab @(_filter == "ua" ? "is-active" : "")" @onclick="@(() => _filter = "ua")">
+                🇺🇦 Україна (@CountCountry("Україна"))
+            </button>
+            <button type="button" class="cv-ltab @(_filter == "foreign" ? "is-active" : "")" @onclick="@(() => _filter = "foreign")">
+                🌍 Інші країни (@CountForeign())
+            </button>
+            <button type="button" class="cv-ltab @(_filter == "today" ? "is-active" : "")" @onclick="@(() => _filter = "today")">
+                🕒 Сьогодні (@CountToday())
+            </button>
+        </div>
+    </div>
+
+    @if (!Filtered.Any())
+    {
+        <StateBox Icon="@Icons.Material.Outlined.SearchOff"
+                  Title="Нічого не знайдено"
+                  Text="За вказаним пошуковим запитом або фільтром немає записів." />
+    }
+    else
+    {
+        <div class="cv-vtable">
+            <!-- Шапка таблиці для десктопу -->
+            <div class="cv-vrow cv-vrow--head">
+                <div>Хто (IP та Країна)</div>
+                <div>Місто / Провайдер</div>
+                <div>Коли</div>
+                <div>Сторінка</div>
+                <div>Пристрій</div>
+            </div>
+
+            <!-- Рядки відвідувачів -->
+            @foreach (var log in Filtered)
+            {
+                <div class="cv-vrow" @key="log.Id">
+                    <!-- Хто: IP у дужках Країна -->
+                    <div class="cv-vmain">
+                        <span class="cv-vflag" title="@log.CountryDisplayName">@(string.IsNullOrEmpty(log.FlagEmoji) ? "🌐" : log.FlagEmoji)</span>
+                        <div class="cv-vtitle-block">
+                            <div class="cv-vtitle">
+                                <span>@log.Ip</span>
+                                <span class="cv-vcountry-badge">(@log.CountryDisplayName)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Місто та провайдер -->
+                    <div>
+                        <div class="cv-vloc">
+                            @(string.IsNullOrWhiteSpace(log.City) ? log.CountryDisplayName : $"{log.City}{(string.IsNullOrWhiteSpace(log.Region) ? "" : $", {log.Region}")}")
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(log.Isp))
+                        {
+                            <div class="cv-visp">@log.Isp</div>
+                        }
+                    </div>
+
+                    <!-- Коли -->
+                    <div class="cv-vtime">
+                        <span class="cv-vtime__abs">@Ua.DateTime(log.TimestampUtc.ToLocalTime())</span>
+                        <span class="cv-vtime__rel">@Ua.RelativeTime(log.TimestampUtc)</span>
+                    </div>
+
+                    <!-- Сторінка -->
+                    <div>
+                        <span class="cv-pill cv-pill--neutral cv-vpage" title="@log.Page">
+                            <MudIcon Icon="@Icons.Material.Outlined.Link" Size="Size.Small" Style="font-size:13px" />
+                            @log.Page
+                        </span>
+                    </div>
+
+                    <!-- Пристрій -->
+                    <div class="cv-vdevice" title="@log.UserAgent">
+                        <MudIcon Icon="@GetDeviceIcon(log.Device)" Size="Size.Small" Style="font-size:15px;color:var(--cv-muted)" />
+                        <span>@(log.Device ?? "Браузер")</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    IReadOnlyList<VisitorLogEntry>? _logs;
+    bool _loading = true;
+    string _search = "";
+    string _filter = "all";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Tracker.Changed += OnTrackerChanged;
+        await LoadAsync();
+    }
+
+    async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _logs = await Tracker.GetLogsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Помилка завантаження журналу: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    void OnTrackerChanged() => _ = InvokeAsync(async () =>
+    {
+        _logs = await Tracker.GetLogsAsync();
+        StateHasChanged();
+    });
+
+    async Task ClearLogsAsync()
+    {
+        if (!await Dialogs.ConfirmAsync("Очистити журнал відвідувачів?", "Усі збережені записи про відвідування сайту буде видалено безповоротно.", "Очистити"))
+        {
+            return;
+        }
+
+        await Tracker.ClearLogsAsync();
+        Snackbar.Add("Журнал відвідувачів очищено", Severity.Normal);
+    }
+
+    IEnumerable<VisitorLogEntry> Filtered
+    {
+        get
+        {
+            if (_logs is null) return [];
+            var res = _logs.AsEnumerable();
+
+            // Фільтрація за категорією
+            res = _filter switch
+            {
+                "ua" => res.Where(x => x.CountryCode == "UA" || x.CountryDisplayName.Contains("Україна", StringComparison.OrdinalIgnoreCase)),
+                "foreign" => res.Where(x => x.CountryCode != "UA" && !x.CountryDisplayName.Contains("Україна", StringComparison.OrdinalIgnoreCase)),
+                "today" => res.Where(x => x.TimestampUtc.ToLocalTime().Date == DateTime.Today),
+                _ => res
+            };
+
+            // Фільтрація за пошуковим запитом
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                var q = _search.Trim();
+                res = res.Where(x =>
+                    x.Ip.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    x.CountryDisplayName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    (x.City is not null && x.City.Contains(q, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Region is not null && x.Region.Contains(q, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.Isp is not null && x.Isp.Contains(q, StringComparison.OrdinalIgnoreCase)) ||
+                    x.Page.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    (x.Device is not null && x.Device.Contains(q, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            return res;
+        }
+    }
+
+    int CountCountry(string name) => _logs?.Count(x => x.CountryDisplayName.Contains(name, StringComparison.OrdinalIgnoreCase)) ?? 0;
+    int CountForeign() => _logs?.Count(x => x.CountryCode != "UA" && !x.CountryDisplayName.Contains("Україна", StringComparison.OrdinalIgnoreCase)) ?? 0;
+    int CountToday() => _logs?.Count(x => x.TimestampUtc.ToLocalTime().Date == DateTime.Today) ?? 0;
+
+    static string GetDeviceIcon(string? device)
+    {
+        if (string.IsNullOrWhiteSpace(device)) return Icons.Material.Outlined.Devices;
+        if (device.Contains("iPhone") || device.Contains("Android") || device.Contains("Mobile"))
+            return Icons.Material.Outlined.Smartphone;
+        if (device.Contains("iPad") || device.Contains("Tablet"))
+            return Icons.Material.Outlined.Tablet;
+        if (device.Contains("macOS") || device.Contains("Mac"))
+            return Icons.Material.Outlined.LaptopMac;
+        return Icons.Material.Outlined.Computer;
+    }
+
+    public void Dispose()
+    {
+        Tracker.Changed -= OnTrackerChanged;
+    }
+}

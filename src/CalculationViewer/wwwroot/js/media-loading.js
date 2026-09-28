@@ -209,3 +209,18 @@
     // Для налагодження: cvThumbs.stats() у консолі браузера.
     window.cvThumbs = { stats: () => ({ active, limit, queued: queue.length, backoff, pausedIn: Math.max(0, pausedUntil - Date.now()), cachedInMemory: memory.size }) };
 })();
+
+// Допоміжна функція для отримання інформації про клієнта (UserAgent, мова)
+window.cvGetClientInfo = function () {
+    try {
+        return {
+            userAgent: navigator.userAgent || '',
+            language: navigator.language || '',
+            screenWidth: window.screen ? window.screen.width : 0,
+            screenHeight: window.screen ? window.screen.height : 0
+        };
+    } catch (e) {
+        return { userAgent: '', language: '', screenWidth: 0, screenHeight: 0 };
+    }
+};
+

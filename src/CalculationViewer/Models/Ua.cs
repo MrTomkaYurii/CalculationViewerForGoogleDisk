@@ -39,6 +39,34 @@ public static class Ua
     static string Dec(double v) => v.ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',');
 
     public static string Date(DateTime d) => d.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+
+    public static string Time(DateTime d) => d.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+
+    public static string DateTime(DateTime d) => d.ToString("dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture);
+
+    public static string RelativeTime(DateTime utc)
+    {
+        var diff = System.DateTime.UtcNow - utc;
+        if (diff.TotalSeconds < 45) return "щойно";
+        if (diff.TotalMinutes < 60)
+        {
+            var m = Math.Max(1, (int)diff.TotalMinutes);
+            return $"{m} {Plural(m, "хвилину", "хвилини", "хвилин")} тому";
+        }
+        if (diff.TotalHours < 24)
+        {
+            var h = (int)diff.TotalHours;
+            return $"{h} {Plural(h, "годину", "години", "годин")} тому";
+        }
+        var days = (int)diff.TotalDays;
+        if (days == 1) return "вчора";
+        if (days < 30) return $"{days} {Plural(days, "день", "дні", "днів")} тому";
+        return Date(utc);
+    }
+
+    public static string Visits(int n) => Count(n, "візит", "візити", "візитів");
+    public static string Visitors(int n) => Count(n, "відвідувач", "відвідувачі", "відвідувачів");
+    public static string Countries(int n) => Count(n, "країна", "країни", "країн");
 }
 
 /// <summary>Природне сортування: f2 перед f10, step_2 перед step_10.</summary>

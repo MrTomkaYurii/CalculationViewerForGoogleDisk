@@ -71,3 +71,12 @@ public interface IAdminSession
     Task SignInAsync();
     Task SignOutAsync();
 }
+
+/// <summary>Журнал відвідувачів сайту (IP, країна, час). Доступний лише адміністратору.</summary>
+public interface IVisitorTracker
+{
+    event Action? Changed;
+    Task TrackVisitAsync(string? pagePath = null, CancellationToken ct = default);
+    Task<IReadOnlyList<VisitorLogEntry>> GetLogsAsync(CancellationToken ct = default);
+    Task ClearLogsAsync(CancellationToken ct = default);
+}

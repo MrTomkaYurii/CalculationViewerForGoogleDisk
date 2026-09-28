@@ -37,6 +37,8 @@ builder.Services.AddSingleton<IFolderCatalog>(sp => new SeededFolderCatalog(
     sp.GetService<Microsoft.JSInterop.IJSRuntime>()));
 builder.Services.AddSingleton<ICollectionStore, MemoryCollectionStore>();
 builder.Services.AddSingleton<IAdminSession, DevAdminSession>();
+builder.Services.AddSingleton<IVisitorTracker>(sp =>
+    new VisitorTracker(sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>(), new HttpClient()));
 
 builder.Services.AddSingleton<UiPrefs>();
 builder.Services.AddScoped<BookmarkActions>();
