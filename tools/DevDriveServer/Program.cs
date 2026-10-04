@@ -6,7 +6,8 @@
 using System.Text;
 using Microsoft.AspNetCore.StaticFiles;
 
-var root = Path.GetFullPath(args.Length > 0 ? args[0] : @"C:\August 2026-Results");
+var defaultRoot = Directory.Exists(@"C:\September 2026-Results") ? @"C:\September 2026-Results" : @"C:\August 2026-Results";
+var root = Path.GetFullPath(args.Length > 0 ? args[0] : defaultRoot);
 if (!Directory.Exists(root))
 {
     Console.Error.WriteLine($"Папку не знайдено: {root}");

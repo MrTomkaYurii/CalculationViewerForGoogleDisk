@@ -85,13 +85,33 @@ internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer,
 
             if (saved is { Count: > 0 })
             {
-                // Якщо в folders.json з'явилися нові папки, додаємо їх до збереженого списку
+                // Якщо в folders.json з'явилися нові папки або оновилися базові описи
+                var updated = false;
                 foreach (var seedItem in list)
                 {
-                    if (saved.All(f => f.Id != seedItem.Id))
+                    var existing = saved.FirstOrDefault(f => f.Id == seedItem.Id);
+                    if (existing is null)
                     {
                         saved.Add(seedItem);
+                        updated = true;
                     }
+                    else if (!string.IsNullOrWhiteSpace(seedItem.Description) &&
+                             (string.IsNullOrWhiteSpace(existing.Description) ||
+                              existing.Description.Contains("Серце/2 (реальний) і Модель/2") ||
+                              (existing.Description != seedItem.Description && existing.Description.Length < seedItem.Description.Length)))
+                    {
+                        existing.Description = seedItem.Description;
+                        updated = true;
+                    }
+                }
+                if (updated && js is not null)
+                {
+                    try
+                    {
+                        var json = System.Text.Json.JsonSerializer.Serialize(saved);
+                        await js.InvokeVoidAsync("localStorage.setItem", "cv_custom_catalog", json);
+                    }
+                    catch { }
                 }
                 return _folders = saved;
             }
