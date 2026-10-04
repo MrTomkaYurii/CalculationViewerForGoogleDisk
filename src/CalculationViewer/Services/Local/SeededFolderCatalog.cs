@@ -98,7 +98,9 @@ internal sealed class SeededFolderCatalog(HttpClient app, HttpClient? devServer,
                     else if (!string.IsNullOrWhiteSpace(seedItem.Description) &&
                              (string.IsNullOrWhiteSpace(existing.Description) ||
                               existing.Description.Contains("Серце/2 (реальний) і Модель/2") ||
-                              (existing.Description != seedItem.Description && existing.Description.Length < seedItem.Description.Length)))
+                              existing.Description.Contains(@"\circ") ||
+                              existing.Description.Contains(@"\pi") ||
+                              existing.Description != seedItem.Description))
                     {
                         existing.Description = seedItem.Description;
                         updated = true;
